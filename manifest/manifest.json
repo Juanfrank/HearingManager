@@ -1,0 +1,48 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "0.1.0",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "developer": {
+    "name": "Court IT — replace before publishing",
+    "websiteUrl": "https://example.court.gov",
+    "privacyUrl": "https://example.court.gov/privacy",
+    "termsOfUseUrl": "https://example.court.gov/terms"
+  },
+  "name": {
+    "short": "Hearing Manager",
+    "full": "Judiciary Hearing Administrator"
+  },
+  "description": {
+    "short": "Manage sub-hearings inside a single Teams meeting.",
+    "full": "Companion app for a Teams meeting that helps judges and court staff track who's connected, group participants by hearing number, promote/demote presenter access per hearing, and record timing/notes/attendance — without leaving Teams."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#1F2328",
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://<TAB_HOSTNAME>/config",
+      "canUpdateConfiguration": false,
+      "scopes": ["groupChat", "team"],
+      "context": ["meetingSidePanel", "meetingStage"]
+    }
+  ],
+  "bots": [
+    {
+      "botId": "<MICROSOFT_APP_ID>",
+      "scopes": ["groupChat", "team"],
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["<TAB_HOSTNAME>"],
+  "webApplicationInfo": {
+    "id": "<MICROSOFT_APP_ID>",
+    "resource": "api://<TAB_HOSTNAME>/<MICROSOFT_APP_ID>"
+  }
+}

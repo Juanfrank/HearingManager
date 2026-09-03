@@ -1,0 +1,134 @@
+// Judiciary Hearing Administrator — data model
+// See docs/README.md section 4 for rationale.
+
+datasource db {
+  // Postgres is the target for production (low-volume, high-integrity data).
+  // For local dev without a Postgres instance, set DATABASE_URL to a
+  // "file:./dev.db" sqlite path and change provider to "sqlite" — see
+  // backend/.env.example.
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum HearingState {
+  // Explicit lifecycle states (distinct from the *derived* ready/incomplete/
+  // no_show attendance status — see services/statusDerivation.ts).
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum PartyRole {
+  PARTY
+  COUNSEL
+  WITNESS
+  OTHER
+}
+
+enum JudgeRole {
+  JUDGE
+  PRESIDING_JUDGE
+  SECRETARY
+  OTHER_OFFICER
+}
+
+enum RemapTargetType {
+  EXISTING_PARTY
+  NEW_PARTY
+}
+
+model Hearing {
+  id            String         @id @default(cuid())
+  hearingNumber Int
+  state         HearingState   @default(PENDING)
+  notes         String         @default("")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  expectedParties ExpectedParty[]
+  periods         HearingPeriod[]
+  remaps          RemapMapping[]
+  auditEntries    AuditLogEntry[]
+
+  @@unique([hearingNumber])
+}
+
+model HearingPeriod {
+  id        String    @id @default(cuid())
+  hearingId String
+  hearing   Hearing   @relation(fields: [hearingId], references: [id])
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([hearingId])
+}
+
+model ExpectedParty {
+  id        String    @id @default(cuid())
+  hearingId String
+  hearing   Hearing   @relation(fields: [hearingId], references: [id])
+  name      String
+  email     String
+  role      PartyRole @default(PARTY)
+
+  remapsTargeting RemapMapping[]
+
+  @@index([hearingId])
+  @@index([email])
+}
+
+// Live roster, fed exclusively by bot roster events (join/leave). Source of
+// truth for "who is currently connected" — never polled, never derived.
+model RosterEntry {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  displayName String
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  isConnected Boolean   @default(true)
+  updatedAt   DateTime  @updatedAt
+}
+
+model RemapMapping {
+  id                    String          @id @default(cuid())
+  rosterEmail           String
+  mappedToType          RemapTargetType
+  mappedToExpectedPartyId String?
+  mappedToExpectedParty  ExpectedParty?  @relation(fields: [mappedToExpectedPartyId], references: [id])
+  newPartyName          String?
+  hearingId             String
+  hearing               Hearing         @relation(fields: [hearingId], references: [id])
+  createdAt             DateTime        @default(now())
+  undoneAt              DateTime?
+
+  @@index([hearingId])
+  @@index([rosterEmail])
+}
+
+model JudgeOrAuxiliary {
+  id    String    @id @default(cuid())
+  email String    @unique
+  name  String
+  role  JudgeRole
+}
+
+// Every role change, remap, undo, and status transition — actor, timestamp,
+// before/after state. This is a record of how a hearing was actually
+// conducted; never delete rows from this table.
+model AuditLogEntry {
+  id         String   @id @default(cuid())
+  hearingId  String?
+  hearing    Hearing? @relation(fields: [hearingId], references: [id])
+  actorEmail String
+  action     String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([hearingId])
+  @@index([createdAt])
+}
