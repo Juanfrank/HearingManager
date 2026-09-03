@@ -10,6 +10,7 @@ import { judgesRouter } from "./routes/judges";
 import { remapRouter } from "./routes/remap";
 import { messagesRouter } from "./routes/messages";
 import { meetingsRouter } from "./routes/meetings";
+import { provisionRouter } from "./routes/provision";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
@@ -50,6 +51,15 @@ app.post("/api/messages/teams", async (req, res) => {
     if (!res.headersSent) res.status(500).json({ error: "bot processing failed" });
   }
 });
+
+// Provisioning endpoint — also registered BEFORE requireTeamsUser, same
+// reasoning as the bot endpoint above: the caller is an external
+// case-management system (docs/README.md, "Provisioning"), not a
+// signed-in Teams user, so it carries its own X-Api-Key check
+// (requireProvisioningKey, applied inside provisionRouter itself — see
+// routes/provision.ts — not here, so it can only ever guard this one
+// exact path and nothing app.use's prefix-matching might otherwise catch).
+app.use("/api/meetings/:meetingId/provision", provisionRouter);
 
 // Everything else requires a validated Teams-SSO token (or AUTH_MODE=
 // dev-bypass locally) — this is what turns req.actorEmail from "whatever

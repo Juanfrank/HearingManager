@@ -74,6 +74,54 @@ that isn't built — until it is, a multi-meeting deployment needs them
 registered by some other means (e.g. an admin script) before Activate/
 Complete will PATCH the correct meeting.
 
+## Provisioning: how judges/hearings/parties actually get into a meeting
+
+The tab is a **management dashboard for hearing data that already
+exists** — it has no "add a judge" or "create a hearing" screen. Per §1's
+own premise ("initial roles... assigned by another system"), that data is
+expected to come from the court's case-management system ahead of the
+hearing day, via:
+
+```
+POST /api/meetings/:meetingId/provision
+Header: X-Api-Key: <one of PROVISIONING_API_KEYS>
+Body: {
+  "organizerUserId"?: string,
+  "onlineMeetingId"?: string,
+  "judges"?: [{ "email": string, "name": string,
+                "role": "JUDGE" | "PRESIDING_JUDGE" | "SECRETARY" | "OTHER_OFFICER" }],
+  "hearings"?: [{ "hearingNumber": number,
+                  "expectedParties"?: [{ "name": string, "email": string,
+                                          "role"?: "PARTY" | "COUNSEL" | "WITNESS" | "OTHER" }] }]
+}
+```
+
+(`backend/src/routes/provision.ts`, guarded by
+`backend/src/auth/requireProvisioningKey.ts` — a separate, simpler
+mechanism from Teams SSO, since the caller here is a server, not a
+signed-in Teams user; comma-separated `PROVISIONING_API_KEYS` in
+`backend/.env` for key rotation.) Judges are upserted (safe to re-run with
+an updated roster); hearings are create-only — a `hearingNumber` that
+already exists in the meeting is **skipped**, reported back in the
+response's `hearingsSkipped`, rather than overwritten, because an existing
+hearing's `ExpectedParty` rows may already be referenced by a
+`RemapMapping` mid-hearing. Example:
+
+```
+curl -X POST https://<backend>/api/meetings/<meetingId>/provision \
+  -H 'Content-Type: application/json' -H 'X-Api-Key: <key>' \
+  -d '{"judges": [...], "hearings": [...]}'
+```
+
+`PROVISIONING_API_KEYS` unset (the default) disables the endpoint (503) —
+this app doesn't currently integrate with any real case-management system,
+so there's nothing to point it at yet; set it once there is. Separately,
+`POST /api/meetings/:meetingId/register` (`routes/meetings.ts`) is a
+lighter-weight Teams-SSO-authenticated endpoint the tab itself calls on
+startup — it only creates the bare `Meeting` row so hearings can exist
+before any roster event has happened; it is not how judges/hearings get
+populated.
+
 ## Azure / Entra ID prerequisites (manual — cannot be done in code)
 
 These require the court's Microsoft 365 tenant admin, not just a
