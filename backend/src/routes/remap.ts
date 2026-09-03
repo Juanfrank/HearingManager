@@ -2,11 +2,13 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { broadcastState } from "../ws";
 import { logAudit } from "../services/auditLog";
+import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
 export const remapRouter = Router();
 
+// Set by requireTeamsUser (index.ts) from the verified Teams-SSO token.
 function actorEmail(req: import("express").Request): string {
-  return (req.header("x-actor-email") || req.body?.actorEmail || "unknown@local").toLowerCase();
+  return (req as AuthedRequest).actorEmail ?? "unknown@local";
 }
 
 /**

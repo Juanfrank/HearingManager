@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { StateSnapshot } from "./types";
 import { subscribeToState } from "./socket";
 import { getCurrentUserEmail } from "./teamsContext";
-import { setActorEmail } from "./api";
 import { JudgesPanel } from "./components/JudgesPanel";
 import { HearingsSection } from "./components/HearingsSection";
 import { GeneralPublic } from "./components/GeneralPublic";
@@ -12,13 +11,24 @@ export default function App() {
   const [myEmail, setMyEmail] = useState("unknown@local");
 
   useEffect(() => {
-    getCurrentUserEmail().then((email) => {
-      setMyEmail(email);
-      setActorEmail(email);
-    });
+    // Display-only — see teamsContext.ts. Real request identity now comes
+    // from a Teams-SSO token attached per-call (api.ts / socket.ts), not
+    // from this value.
+    getCurrentUserEmail().then(setMyEmail);
   }, []);
 
-  useEffect(() => subscribeToState(setSnapshot), []);
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    subscribeToState(setSnapshot).then((unsub) => {
+      if (cancelled) unsub();
+      else unsubscribe = unsub;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, []);
 
   if (!snapshot) {
     return <div className="loading">Connecting…</div>;

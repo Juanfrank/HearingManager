@@ -67,6 +67,48 @@ real token acquisition into `getAccessToken()` in `backend/src/graph/client.ts`
 (currently throws — MSAL client-credentials or on-behalf-of flow goes
 there).
 
+## Auth: Teams SSO
+
+Every `/api/*` request (REST and the Socket.IO handshake) requires a
+validated identity — this is what the audit log's `actorEmail` is actually
+backed by, not a client-supplied header:
+
+- **`tab/src/teamsContext.ts`**'s `getAuthToken()` calls
+  `microsoftTeams.authentication.getAuthToken()`, which — once the tenant
+  admin has consented to this app (§3 above) — silently returns an Azure AD
+  access token for this app's own App ID (audience =
+  `webApplicationInfo.id`/`.resource` in `manifest/manifest.json`), no
+  popup or password prompt. `tab/src/api.ts` and `tab/src/socket.ts` attach
+  it as `Authorization: Bearer <token>` on every call.
+- **`backend/src/auth/verifyTeamsToken.ts`**'s `requireTeamsUser` (REST,
+  mounted in `index.ts`) and the equivalent Socket.IO handshake check
+  (`ws.ts`) verify that token's signature (against Azure AD's public keys,
+  via `jwks-rsa`), audience, and tenant, then extract the signed-in user's
+  `preferred_username`/`upn` as `req.actorEmail` — the value every route
+  now uses for audit-log attribution instead of trusting a client header.
+
+**Known gap**: this only covers the *silent* SSO path. If the tenant hasn't
+done org-wide admin consent for this app's `access_as_user` scope yet (or
+consent is per-user), `getAuthToken()` rejects with
+`resourceRequiresConsent`/`invalid_grant`, and there's currently no
+interactive-consent fallback (`microsoftTeams.authentication.authenticate`
+popup + `tab/auth-start.html`/`auth-end.html` pages) wired up — add that if
+this deployment can't rely on admin consent being done ahead of time.
+
+**Local dev without a real Entra app registration**: set
+`AUTH_MODE=dev-bypass` in `backend/.env` (the default in
+`.env.example`) — routes then trust an `x-actor-email` header (or the
+tab's `?actorEmail=` query-param override) instead of validating a real
+token. **Never set `AUTH_MODE=dev-bypass` in production** — it lets any
+caller attribute audit-log entries to any judge they like.
+
+`POST /api/roster/event` and `/api/roster/connection-health` (dev-only
+roster simulation, see below) are additionally gated behind
+`ALLOW_ROSTER_SIMULATION=true` regardless of `AUTH_MODE` — the real bot
+never calls them over HTTP (`backend/src/bot/index.ts` calls the same
+underlying function in-process), so leaving them open in production would
+let any signed-in user fabricate attendance.
+
 ## Local development
 
 ### Backend
@@ -88,11 +130,20 @@ instead — e.g. `pg_ctlcluster <version> main start` if installed locally,
 or `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16` —
 and point `DATABASE_URL` at it. No org-wide Postgres server needed.
 
-With `GRAPH_MODE=mock` (the default), you can drive the whole hearing
-lifecycle without a live Teams meeting via `POST /api/roster/event`
-(`{ email, displayName, type: "joined" | "left" }`) to simulate join/leave,
+With `GRAPH_MODE=mock` and `AUTH_MODE=dev-bypass` (both defaults in
+`.env.example`), you can drive the whole hearing lifecycle without a live
+Teams meeting or a real Entra app registration — pass `x-actor-email` on
+each call, and `POST /api/roster/event`
+(`{ email, displayName, type: "joined" | "left" }`) to simulate join/leave:
+
+```
+curl -X POST http://localhost:3978/api/hearings \
+  -H 'Content-Type: application/json' -H 'x-actor-email: judge1@court.gov' \
+  -d '{"hearingNumber": 12, "expectedParties": [...]}'
+```
+
 and the usual `/api/hearings/:id/{activate,complete,reactivate}` /
-`/api/remap` / `/api/messages` endpoints. See
+`/api/remap` / `/api/messages` endpoints, same header. See
 `backend/src/services/statusDerivation.test.ts` for the attendance-status
 rules exercised as unit tests (`npx vitest run`).
 
@@ -105,9 +156,10 @@ npm run dev                  # http://localhost:53000
 ```
 
 Outside of a real Teams meeting, open it directly in a browser with
-`?actorEmail=judge1@court.gov` to simulate being signed in as that judge
-(`tab/src/teamsContext.ts` falls back to this when the Teams JS SDK can't
-initialize).
+`?actorEmail=judge1@court.gov` to simulate being signed in as that judge —
+this skips real SSO token acquisition entirely (`tab/src/teamsContext.ts`)
+and sends `x-actor-email` instead, so the backend must also be running
+with `AUTH_MODE=dev-bypass` for this to work.
 
 ## Build-order status
 
@@ -134,7 +186,9 @@ Per the original build instructions, in order:
 9. ✅ Audit logging — every role change, remap, undo, notes edit, and
    status transition is logged with actor/timestamp/before-after via
    `backend/src/services/auditLog.ts`, called from every mutation route
-   rather than bolted on afterward.
+   rather than bolted on afterward. Actor identity is now a verified Teams
+   SSO token (`backend/src/auth/verifyTeamsToken.ts`), not a client-trusted
+   header — see "Auth: Teams SSO" above.
 
 ## Non-functional notes
 

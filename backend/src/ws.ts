@@ -1,6 +1,7 @@
 import type { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { buildStateSnapshot } from "./services/stateSnapshot";
+import { verifyBearerToken, isDevBypass } from "./auth/verifyTeamsToken";
 
 let io: SocketIOServer | null = null;
 let rosterStale = false;
@@ -8,6 +9,18 @@ let rosterStale = false;
 export function initWs(httpServer: HttpServer, corsOrigin: string) {
   io = new SocketIOServer(httpServer, {
     cors: { origin: corsOrigin },
+  });
+
+  // Same identity check as REST (auth/verifyTeamsToken.ts) — the pushed
+  // state includes participant names/emails, so an unauthenticated socket
+  // would leak PII even though it can't mutate anything.
+  io.use((socket, next) => {
+    if (isDevBypass()) return next();
+    const token = socket.handshake.auth?.token as string | undefined;
+    if (!token) return next(new Error("missing auth token"));
+    verifyBearerToken(token)
+      .then(() => next())
+      .catch((err: Error) => next(err));
   });
 
   io.on("connection", async (socket) => {

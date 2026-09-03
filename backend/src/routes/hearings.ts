@@ -8,13 +8,15 @@ import {
   reactivateHearing,
 } from "../graph/roleManager";
 import { buildStateSnapshot } from "../services/stateSnapshot";
+import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
 export const hearingsRouter = Router();
 
+// Set by requireTeamsUser (index.ts) from the verified Teams-SSO token —
+// see auth/verifyTeamsToken.ts. Always defined by the time a route here
+// runs; the fallback is just to keep TypeScript happy.
 function actorEmail(req: import("express").Request): string {
-  // In production this comes from Teams SSO context forwarded by the tab;
-  // for now accept it explicitly (dev) with a fallback for scripted calls.
-  return (req.header("x-actor-email") || req.body?.actorEmail || "unknown@local").toLowerCase();
+  return (req as AuthedRequest).actorEmail ?? "unknown@local";
 }
 
 hearingsRouter.get("/", async (_req, res) => {

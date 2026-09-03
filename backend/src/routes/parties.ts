@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { broadcastState } from "../ws";
 import { logAudit } from "../services/auditLog";
+import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
 export const partiesRouter = Router();
 
@@ -17,7 +18,7 @@ partiesRouter.post("/", async (req, res) => {
   });
   await logAudit({
     hearingId,
-    actorEmail: req.header("x-actor-email") || "unknown@local",
+    actorEmail: (req as AuthedRequest).actorEmail ?? "unknown@local",
     action: "expectedParty.create",
     after: party,
   });
@@ -29,7 +30,7 @@ partiesRouter.delete("/:id", async (req, res) => {
   const party = await prisma.expectedParty.delete({ where: { id: req.params.id } });
   await logAudit({
     hearingId: party.hearingId,
-    actorEmail: req.header("x-actor-email") || "unknown@local",
+    actorEmail: (req as AuthedRequest).actorEmail ?? "unknown@local",
     action: "expectedParty.delete",
     before: party,
   });
