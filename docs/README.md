@@ -351,6 +351,40 @@ labeled as such. Fires once — `meeting.endedAt` blocks a second call with
 409. Triggered from the tab via the "End session & send summaries" button
 (confirm-before-firing, since it notifies people and can't be undone).
 
+## Internationalization
+
+The tab and the backend-generated session-summary text both go through a
+small `t(key, vars?)` translation lookup rather than hardcoding English
+strings inline — **Spanish is the only locale today, and it's the
+default**, not a placeholder waiting on a language picker:
+
+- `tab/src/i18n/es.ts` + `index.ts` — every UI string in the tab (labels,
+  button text, placeholders, banners, confirm dialogs). Components import
+  `t` and call e.g. `t("hearingCard.setActive")` or
+  `t("hearingCard.number", { number: 12 })` for interpolated strings
+  (`{name}`-style placeholders).
+- `backend/src/i18n/es.ts` + `index.ts` — the session-closure summary
+  message text (`services/sessionSummary.ts`) sent to judges/auxiliaries —
+  real user-facing content, just not rendered in the tab, so it needed the
+  same treatment.
+- **Backend errors carry a stable `code`, never a hardcoded sentence.**
+  E.g. activating a second hearing while one's already active
+  (`graph/roleManager.ts`'s `AlreadyActiveHearingError`) comes back as
+  `{ code: "ALREADY_ACTIVE", hearingNumber: N }` (`routes/hearings.ts`'s
+  `respondError`), and the tab's `api.ts` throws a typed `ApiError`
+  carrying that code. `HearingCard.tsx`'s `describeApiError()` maps it to
+  `t("errors.ALREADY_ACTIVE", {...})`, falling back to
+  `t("errors.GENERIC")` for anything without a translated code — the
+  backend's internal error text never reaches the user directly.
+
+**Adding a second locale later** (documented in both `i18n/index.ts`
+files): create `<code>.ts` with the exact same key set as `es.ts`
+(TypeScript's `keyof typeof es` flags any missing/extra key), register it
+in `DICTIONARIES`, and wire up a way to choose it — e.g. reading Teams'
+own locale from `teamsContext.ts`'s `app.getContext()`, or a manual
+picker. Every call site already goes through `t()`, so nothing else in
+the app changes.
+
 ## Local development
 
 ### Backend

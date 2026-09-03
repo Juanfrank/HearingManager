@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { HearingView } from "../types";
-import { api } from "../api";
+import { api, ApiError } from "../api";
+import { t, hasKey } from "../i18n";
 
 function useElapsed(startedAt: string | null) {
   const [label, setLabel] = useState("00:00:00");
@@ -30,6 +31,21 @@ function periodDuration(startedAt: string, endedAt: string | null) {
   return `${h}:${m}:${s}`;
 }
 
+/**
+ * Renders a backend ApiError (a stable {code, ...details} — backend/src/
+ * routes/hearings.ts's respondError) in Spanish via i18n, instead of
+ * whatever raw text the server happened to log internally.
+ */
+function describeApiError(err: unknown): string {
+  if (err instanceof ApiError) {
+    const key = `errors.${err.code}`;
+    if (hasKey(key)) {
+      return t(key, err.details as Record<string, string | number>);
+    }
+  }
+  return t("errors.GENERIC");
+}
+
 export function HearingCard({
   hearing,
   notes,
@@ -53,14 +69,15 @@ export function HearingCard({
     <div className={`hearing-card ${spotlight ? "spotlight" : ""}`}>
       <div className="hearing-card-header">
         <div>
-          <strong>Hearing #{hearing.hearingNumber}</strong>{" "}
+          <strong>{t("hearingCard.number", { number: hearing.hearingNumber })}</strong>{" "}
           <span className="muted">
-            ({hearing.presentCount}/{hearing.expectedCount} present)
+            {t("hearingCard.presentCount", {
+              present: hearing.presentCount,
+              expected: hearing.expectedCount,
+            })}
           </span>
           {hearing.state === "ACTIVE" && (
-            <div className="active-badge">
-              Active · {elapsed}
-            </div>
+            <div className="active-badge">{t("hearingCard.active", { elapsed })}</div>
           )}
         </div>
       </div>
@@ -72,18 +89,18 @@ export function HearingCard({
             <span className="name">{p.email.split("@")[0]}</span>
             <span className="email">{p.email}</span>
           </span>
-          {!p.present && <span className="absent-label">(absent)</span>}
+          {!p.present && <span className="absent-label">{t("hearingCard.absent")}</span>}
           <span className="row-actions">
             {/* Call only makes sense for someone not already on the call. */}
             {!p.present && (
-              <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>
+              <button title={t("common.call")} onClick={() => alert(t("common.callPhase2"))}>
                 📞
               </button>
             )}
             <button
-              title="Message"
+              title={t("common.message")}
               onClick={async () => {
-                const text = prompt(`Message to ${p.email}:`);
+                const text = prompt(t("common.messagePromptTo", { name: p.email }));
                 if (text) await api.sendMessage(p.email, text);
               }}
             >
@@ -91,11 +108,11 @@ export function HearingCard({
             </button>
             {p.present && (
               <>
-                <button title="Mute" onClick={() => api.muteParticipant(p.email)}>
+                <button title={t("common.mute")} onClick={() => api.muteParticipant(p.email)}>
                   🔇
                 </button>
                 <button
-                  title="Turn off camera"
+                  title={t("common.cameraOff")}
                   onClick={() => api.setParticipantCamera(p.email, false)}
                 >
                   📷🚫
@@ -112,18 +129,19 @@ export function HearingCard({
           <span className="name-email">
             <span className="name">{r.rosterEmail}</span>
             <span className="remap-note">
-              Remapped from general public → assigned as{" "}
-              {r.mappedToExpectedPartyName ?? r.newPartyName} (new party)
+              {t("hearingCard.remapNote", {
+                name: r.mappedToExpectedPartyName ?? r.newPartyName ?? "",
+              })}
             </span>
           </span>
-          <button title="Undo remap" onClick={() => api.undoRemap(r.id)}>
+          <button title={t("hearingCard.undoRemap")} onClick={() => api.undoRemap(r.id)}>
             ↩
           </button>
         </div>
       ))}
 
       <textarea
-        placeholder="Add notes... (private — only you see this)"
+        placeholder={t("hearingCard.notesPlaceholder")}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
@@ -133,7 +151,7 @@ export function HearingCard({
 
       {hearing.state === "ACTIVE" && (
         <button className="primary-action" onClick={() => api.completeHearing(hearing.id)}>
-          Mark as completed
+          {t("hearingCard.markCompleted")}
         </button>
       )}
       {hearing.state === "PENDING" && (
@@ -143,11 +161,11 @@ export function HearingCard({
             try {
               await api.activateHearing(hearing.id);
             } catch (err) {
-              alert((err as Error).message);
+              alert(describeApiError(err));
             }
           }}
         >
-          Set as active
+          {t("hearingCard.setActive")}
         </button>
       )}
       {hearing.state === "COMPLETED" && (
@@ -169,11 +187,11 @@ export function HearingCard({
               try {
                 await api.reactivateHearing(hearing.id);
               } catch (err) {
-                alert((err as Error).message);
+                alert(describeApiError(err));
               }
             }}
           >
-            Reactivate
+            {t("hearingCard.reactivate")}
           </button>
         </>
       )}

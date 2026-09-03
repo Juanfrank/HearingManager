@@ -26,6 +26,23 @@ async function meetingPath(path: string): Promise<string> {
   return `/meetings/${encodeURIComponent(meetingId)}${path}`;
 }
 
+/**
+ * A backend error body, shaped {code, ...details} (backend/src/routes/
+ * hearings.ts's respondError and friends) — carries a stable machine-
+ * readable `code` instead of an English sentence, so the tab can render it
+ * via its own translation table (src/i18n) rather than displaying
+ * whatever language the backend happened to log in.
+ */
+export class ApiError extends Error {
+  code: string;
+  details: Record<string, unknown>;
+  constructor(status: number, body: { code?: string; message?: string; [k: string]: unknown }) {
+    super(body.message ?? body.code ?? `request failed: ${status}`);
+    this.code = body.code ?? "UNKNOWN";
+    this.details = body;
+  }
+}
+
 async function request(path: string, init?: RequestInit) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -43,8 +60,8 @@ async function request(path: string, init?: RequestInit) {
   const scopedPath = await meetingPath(path);
   const res = await fetch(`${API_BASE}${scopedPath}`, { ...init, headers });
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`${init?.method ?? "GET"} ${scopedPath} failed: ${res.status} ${body}`);
+    const body = await res.json().catch(() => ({}) as Record<string, unknown>);
+    throw new ApiError(res.status, body);
   }
   return res.status === 204 ? null : res.json();
 }

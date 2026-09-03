@@ -4,6 +4,19 @@ import { computePresenterEmails } from "../services/presenterRules";
 import { patchMeetingRoles, type AttendeeRole } from "./client";
 import { logAudit } from "../services/auditLog";
 
+/**
+ * A stable, machine-readable error — carries a `code` + structured details
+ * instead of a hardcoded English sentence, so the tab can render it in
+ * whatever language it's showing (tab/src/i18n) rather than displaying
+ * this message directly. routes/hearings.ts maps this to a 409.
+ */
+export class AlreadyActiveHearingError extends Error {
+  code = "ALREADY_ACTIVE" as const;
+  constructor(public hearingNumber: number) {
+    super(`Hearing #${hearingNumber} is already active`);
+  }
+}
+
 // Fallback for a meeting whose Meeting row hasn't had organizerUserId/
 // onlineMeetingId resolved yet (see routes/meetings.ts) — lets a single-
 // meeting deployment keep working exactly as before without registering
@@ -113,9 +126,7 @@ export async function activateHearing(
     where: { meetingId, state: "ACTIVE", NOT: { id: hearingId } },
   });
   if (alreadyActive) {
-    throw new Error(
-      `Hearing #${alreadyActive.hearingNumber} is already active — complete or deactivate it before activating another hearing.`,
-    );
+    throw new AlreadyActiveHearingError(alreadyActive.hearingNumber);
   }
 
   const before = { state: hearing.state };
@@ -209,9 +220,7 @@ export async function reactivateHearing(
     where: { meetingId, state: "ACTIVE", NOT: { id: hearingId } },
   });
   if (alreadyActive) {
-    throw new Error(
-      `Hearing #${alreadyActive.hearingNumber} is already active — complete or deactivate it before reactivating another hearing.`,
-    );
+    throw new AlreadyActiveHearingError(alreadyActive.hearingNumber);
   }
 
   const before = { state: hearing.state };

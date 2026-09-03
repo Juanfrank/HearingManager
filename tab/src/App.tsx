@@ -6,6 +6,7 @@ import { api } from "./api";
 import { JudgesPanel } from "./components/JudgesPanel";
 import { HearingsSection } from "./components/HearingsSection";
 import { GeneralPublic } from "./components/GeneralPublic";
+import { t } from "./i18n";
 
 export default function App() {
   const [snapshot, setSnapshot] = useState<StateSnapshot | null>(null);
@@ -33,16 +34,14 @@ export default function App() {
       // rendering an empty dashboard that silently never loads anything.
       const meetingId = await getMeetingId();
       if (!meetingId) {
-        setError(
-          "Couldn't determine which Teams meeting this is. Open this tab from inside a live Teams meeting (or add ?meetingId=... for local dev).",
-        );
+        setError(t("app.errorNoMeeting"));
         return;
       }
 
       try {
         await api.registerMeeting();
       } catch (err) {
-        setError(`Failed to register this meeting with the backend: ${(err as Error).message}`);
+        setError(t("app.errorRegisterMeeting", { message: (err as Error).message }));
         return;
       }
 
@@ -71,20 +70,17 @@ export default function App() {
   }
 
   if (!snapshot) {
-    return <div className="loading">Connecting…</div>;
+    return <div className="loading">{t("app.connecting")}</div>;
   }
 
   return (
     <div className="app">
-      {snapshot.rosterStale && (
-        <div className="stale-banner">
-          ⚠ Roster connection may be stale — presence shown below may be out of date.
-        </div>
-      )}
+      {snapshot.rosterStale && <div className="stale-banner">{t("app.staleBanner")}</div>}
       {snapshot.meetingEndedAt && (
         <div className="session-ended-banner">
-          ✓ Session ended {new Date(snapshot.meetingEndedAt).toLocaleTimeString()} — summaries sent
-          to judges &amp; auxiliaries.
+          {t("app.sessionEndedBanner", {
+            time: new Date(snapshot.meetingEndedAt).toLocaleTimeString(),
+          })}
         </div>
       )}
       <JudgesPanel judges={snapshot.judges} myEmail={myEmail} />
@@ -103,11 +99,7 @@ export default function App() {
         <button
           className="end-session-btn"
           onClick={async () => {
-            if (
-              !confirm(
-                "End session and send every judge/auxiliary a summary of every hearing's final state, including your own notes? This can't be undone.",
-              )
-            ) {
+            if (!confirm(t("app.endSessionConfirm"))) {
               return;
             }
             try {
@@ -117,7 +109,7 @@ export default function App() {
             }
           }}
         >
-          End session &amp; send summaries
+          {t("app.endSessionButton")}
         </button>
       )}
     </div>

@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import { Collapsible } from "./Collapsible";
 import { api } from "../api";
+import { t } from "../i18n";
 
 function MapAsControl({ email, hearings }: { email: string; hearings: HearingView[] }) {
   const [hearingId, setHearingId] = useState("");
@@ -18,17 +19,17 @@ function MapAsControl({ email, hearings }: { email: string; hearings: HearingVie
   return (
     <div className="map-as-row">
       <select value={hearingId} onChange={(e) => { setHearingId(e.target.value); setPartyId(""); }}>
-        <option value="">Map as...</option>
+        <option value="">{t("generalPublic.mapAs")}</option>
         {hearings.map((h) => (
           <option key={h.id} value={h.id}>
-            Hearing #{h.hearingNumber}
+            {t("hearingCard.number", { number: h.hearingNumber })}
           </option>
         ))}
       </select>
       {hearing && (
         <>
           <select value={partyId} onChange={(e) => { setPartyId(e.target.value); setNewName(""); }}>
-            <option value="">Existing party…</option>
+            <option value="">{t("generalPublic.existingParty")}</option>
             {hearing.parties.map((p) => (
               <option key={p.expectedPartyId} value={p.expectedPartyId}>
                 {p.email}
@@ -36,7 +37,7 @@ function MapAsControl({ email, hearings }: { email: string; hearings: HearingVie
             ))}
           </select>
           <input
-            placeholder="…or new party name"
+            placeholder={t("generalPublic.newPartyName")}
             value={newName}
             onChange={(e) => { setNewName(e.target.value); setPartyId(""); }}
           />
@@ -54,7 +55,7 @@ function MapAsControl({ email, hearings }: { email: string; hearings: HearingVie
               setNewName("");
             }}
           >
-            Assign
+            {t("generalPublic.assign")}
           </button>
         </>
       )}
@@ -78,7 +79,7 @@ export function GeneralPublic({
   const grantByEmail = new Map(presenterGrants.map((g) => [g.email, g]));
 
   return (
-    <Collapsible title="General public" count={total} defaultOpen>
+    <Collapsible title={t("generalPublic.title")} count={total} defaultOpen>
       {/* No Call or Message icons for general public — see plan notes;
           only the mic/camera grant controls apply here. */}
       {entries.map((e) => {
@@ -92,15 +93,15 @@ export function GeneralPublic({
             </div>
             {grant ? (
               <div className="grant-row">
-                <span className="grant-indicator">🎙 Mic/camera granted</span>
+                <span className="grant-indicator">{t("generalPublic.micGranted")}</span>
                 <button className="revoke-btn" onClick={() => api.revokeGrant(grant.id)}>
-                  Revoke
+                  {t("generalPublic.revoke")}
                 </button>
               </div>
             ) : (
               <div className="grant-row">
                 <button className="grant-btn" onClick={() => api.grantPresenter(e.email)}>
-                  Grant mic/camera
+                  {t("generalPublic.grantMic")}
                 </button>
               </div>
             )}
@@ -114,7 +115,9 @@ export function GeneralPublic({
           <div className="participant-row remapped-struck" key={r.remapId}>
             <span className="email struck">{r.email}</span>
             <span className="muted">
-              → moved to {target ? `Hearing #${target.hearingNumber}` : "a hearing"}
+              {target
+                ? t("generalPublic.movedTo", { number: target.hearingNumber })
+                : t("generalPublic.movedToUnknown")}
             </span>
           </div>
         );

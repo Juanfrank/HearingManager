@@ -1,6 +1,7 @@
 import type { HearingView } from "../types";
 import { Collapsible } from "./Collapsible";
 import { HearingCard } from "./HearingCard";
+import { t } from "../i18n";
 
 export function HearingsSection({
   hearings,
@@ -39,31 +40,36 @@ export function HearingsSection({
     <>
       {active && (
         <div className="spotlight-wrap">
-          <div className="spotlight-label">⚖ Active hearing</div>
+          <div className="spotlight-label">{t("hearingsSection.activeHearing")}</div>
           {card(active, true)}
         </div>
       )}
 
       <div className="progress-summary">
-        <div className="muted">Completed / total hearings</div>
+        <div className="muted">{t("hearingsSection.completedTotal")}</div>
         <div className="progress-number">
           {completedCount} / {totalCount}
         </div>
       </div>
 
-      <Collapsible title="Pending hearings" count={pendingOnly.length} defaultOpen>
-        <Collapsible title="Ready" count={ready.length} defaultOpen accent="green">
+      <Collapsible title={t("hearingsSection.pending")} count={pendingOnly.length} defaultOpen>
+        <Collapsible title={t("hearingsSection.ready")} count={ready.length} defaultOpen accent="green">
           {ready.map((h) => card(h))}
         </Collapsible>
-        <Collapsible title="Incomplete" count={incomplete.length} defaultOpen accent="amber">
+        <Collapsible
+          title={t("hearingsSection.incomplete")}
+          count={incomplete.length}
+          defaultOpen
+          accent="amber"
+        >
           {incomplete.map((h) => card(h))}
         </Collapsible>
-        <Collapsible title="No show" count={noShow.length} defaultOpen accent="red">
+        <Collapsible title={t("hearingsSection.noShow")} count={noShow.length} defaultOpen accent="red">
           {noShow.map((h) => card(h))}
         </Collapsible>
       </Collapsible>
 
-      <Collapsible title="Completed hearings" count={completed.length} defaultOpen={false}>
+      <Collapsible title={t("hearingsSection.completed")} count={completed.length} defaultOpen={false}>
         {completed.map((h) => card(h))}
       </Collapsible>
     </>

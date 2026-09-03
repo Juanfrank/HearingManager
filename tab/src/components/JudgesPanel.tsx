@@ -1,6 +1,7 @@
 import type { JudgeView } from "../types";
 import { Collapsible } from "./Collapsible";
 import { api } from "../api";
+import { t } from "../i18n";
 
 function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
   const presiding = judge.role === "PRESIDING_JUDGE";
@@ -9,21 +10,21 @@ function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
       <span className={`presence-dot ${judge.connected ? "connected" : ""}`} />
       <span className="name">
         {judge.name}
-        {isMe && " (you)"}
-        {presiding && !isMe && " (Presiding)"}
+        {isMe && t("judgesPanel.you")}
+        {presiding && !isMe && t("judgesPanel.presiding")}
       </span>
       {!isMe && (
         <span className="row-actions">
           {/* Call only makes sense for someone not already on the call. */}
           {!judge.connected && (
-            <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>
+            <button title={t("common.call")} onClick={() => alert(t("common.callPhase2"))}>
               📞
             </button>
           )}
           <button
-            title="Message"
+            title={t("common.message")}
             onClick={async () => {
-              const text = prompt(`Message to ${judge.name}:`);
+              const text = prompt(t("common.messagePromptTo", { name: judge.name }));
               if (text) await api.sendMessage(judge.email, text);
             }}
           >
@@ -31,11 +32,11 @@ function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
           </button>
           {judge.connected && (
             <>
-              <button title="Mute" onClick={() => api.muteParticipant(judge.email)}>
+              <button title={t("common.mute")} onClick={() => api.muteParticipant(judge.email)}>
                 🔇
               </button>
               <button
-                title="Turn off camera"
+                title={t("common.cameraOff")}
                 onClick={() => api.setParticipantCamera(judge.email, false)}
               >
                 📷🚫
@@ -53,12 +54,12 @@ export function JudgesPanel({ judges, myEmail }: { judges: JudgeView[]; myEmail:
   const auxRows = judges.filter((j) => j.role === "SECRETARY" || j.role === "OTHER_OFFICER");
 
   return (
-    <Collapsible title="Judges & auxiliaries" defaultOpen>
-      <div className="subgroup-label">Judges</div>
+    <Collapsible title={t("judgesPanel.title")} defaultOpen>
+      <div className="subgroup-label">{t("judgesPanel.judges")}</div>
       {judgeRows.map((j) => (
         <Row key={j.id} judge={j} isMe={j.email === myEmail} />
       ))}
-      <div className="subgroup-label">Auxiliaries</div>
+      <div className="subgroup-label">{t("judgesPanel.auxiliaries")}</div>
       {auxRows.map((j) => (
         <Row key={j.id} judge={j} isMe={j.email === myEmail} />
       ))}
