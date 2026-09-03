@@ -1,12 +1,24 @@
 # Teams app manifest
 
-`manifest.json` is a scaffold — before packaging/sideloading, replace:
+`manifest.json` currently has two placeholder values that make it
+**schema-valid and packageable, but not a real app** — Teams will accept
+the upload and then fail to actually load the tab or authenticate the bot
+until both are replaced with real values:
 
-- `id` and `webApplicationInfo.id` / `.resource` — the App ID from the Entra
-  ID app registration (see `docs/README.md`, "Azure / Entra ID prerequisites").
-- `bots[0].botId` — same App ID, once the bot is registered in Azure Bot
-  Service against it.
-- `<TAB_HOSTNAME>` — wherever the `tab/` app is actually deployed.
+- `00000000-0000-0000-0000-000000000000` (a nil GUID, appears 3 places:
+  `id`, `bots[0].botId`, `webApplicationInfo.id`) — replace with the real
+  App ID from the Entra ID app registration (see `docs/README.md`, "Azure
+  / Entra ID prerequisites"). All three should be the same App ID.
+- `changeme.example.com` (appears 3 places: `staticTabs[0].contentUrl`/
+  `.websiteUrl`, `validDomains[0]`, `webApplicationInfo.resource`) —
+  replace with wherever `tab/` is actually deployed (a devtunnel/ngrok host
+  for a quick test, a real domain otherwise).
+
+Find every occurrence to replace with:
+
+```
+grep -n '00000000-0000-0000-0000-000000000000\|changeme.example.com' manifest.json
+```
 
 ## Icons
 

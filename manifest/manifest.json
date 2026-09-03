@@ -26,15 +26,15 @@
     {
       "entityId": "hearing-manager",
       "name": "Hearing Manager",
-      "contentUrl": "https://<TAB_HOSTNAME>/",
-      "websiteUrl": "https://<TAB_HOSTNAME>/",
+      "contentUrl": "https://changeme.example.com/",
+      "websiteUrl": "https://changeme.example.com/",
       "scopes": ["groupChat", "team"],
       "context": ["meetingSidePanel", "meetingStage"]
     }
   ],
   "bots": [
     {
-      "botId": "<MICROSOFT_APP_ID>",
+      "botId": "00000000-0000-0000-0000-000000000000",
       "scopes": ["groupChat", "team"],
       "supportsCalling": false,
       "supportsVideo": false,
@@ -42,9 +42,9 @@
     }
   ],
   "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["<TAB_HOSTNAME>"],
+  "validDomains": ["changeme.example.com"],
   "webApplicationInfo": {
-    "id": "<MICROSOFT_APP_ID>",
-    "resource": "api://<TAB_HOSTNAME>/<MICROSOFT_APP_ID>"
+    "id": "00000000-0000-0000-0000-000000000000",
+    "resource": "api://changeme.example.com/00000000-0000-0000-0000-000000000000"
   }
 }

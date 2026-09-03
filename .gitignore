@@ -4,3 +4,4 @@ dist/
 *.log
 backend/prisma/dev.db
 .DS_Store
+manifest/*.zip
