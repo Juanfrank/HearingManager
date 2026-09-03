@@ -5,10 +5,16 @@
 the upload and then fail to actually load the tab or authenticate the bot
 until both are replaced with real values:
 
-- `00000000-0000-0000-0000-000000000000` (a nil GUID, appears 3 places:
-  `id`, `bots[0].botId`, `webApplicationInfo.id`) — replace with the real
-  App ID from the Entra ID app registration (see `docs/README.md`, "Azure
-  / Entra ID prerequisites"). All three should be the same App ID.
+- `65392364-2e1c-40d5-9371-7a5713a448bc` (a randomly-generated placeholder
+  v4 UUID — NOT a real registration, appears 3 places: `id`,
+  `bots[0].botId`, `webApplicationInfo.id`) — replace with the real App ID
+  from the Entra ID app registration (see `docs/README.md`, "Azure / Entra
+  ID prerequisites"). All three should be the same App ID.
+
+  Note: this must be a properly-formatted v4 UUID, not the more obviously
+  fake all-zero GUID (`00000000-0000-0000-0000-000000000000`) — Teams'
+  upload validation rejects that with `BotIdFormatIsIncorrect` since real
+  App IDs carry v4 UUID version/variant bits a nil GUID doesn't have.
 - `changeme.example.com` (appears 3 places: `staticTabs[0].contentUrl`/
   `.websiteUrl`, `validDomains[0]`, `webApplicationInfo.resource`) —
   replace with wherever `tab/` is actually deployed (a devtunnel/ngrok host
@@ -17,7 +23,7 @@ until both are replaced with real values:
 Find every occurrence to replace with:
 
 ```
-grep -n '00000000-0000-0000-0000-000000000000\|changeme.example.com' manifest.json
+grep -n '65392364-2e1c-40d5-9371-7a5713a448bc\|changeme.example.com' manifest.json
 ```
 
 ## Icons

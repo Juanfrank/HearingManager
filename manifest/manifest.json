@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
   "version": "0.1.0",
-  "id": "00000000-0000-0000-0000-000000000000",
+  "id": "65392364-2e1c-40d5-9371-7a5713a448bc",
   "developer": {
     "name": "Court IT Dept (replace)",
     "websiteUrl": "https://example.court.gov",
@@ -34,7 +34,7 @@
   ],
   "bots": [
     {
-      "botId": "00000000-0000-0000-0000-000000000000",
+      "botId": "65392364-2e1c-40d5-9371-7a5713a448bc",
       "scopes": ["groupChat", "team"],
       "supportsCalling": false,
       "supportsVideo": false,
@@ -44,8 +44,8 @@
   "permissions": ["identity", "messageTeamMembers"],
   "validDomains": ["changeme.example.com"],
   "webApplicationInfo": {
-    "id": "00000000-0000-0000-0000-000000000000",
-    "resource": "api://changeme.example.com/00000000-0000-0000-0000-000000000000"
+    "id": "65392364-2e1c-40d5-9371-7a5713a448bc",
+    "resource": "api://changeme.example.com/65392364-2e1c-40d5-9371-7a5713a448bc"
   },
   "authorization": {
     "permissions": {
