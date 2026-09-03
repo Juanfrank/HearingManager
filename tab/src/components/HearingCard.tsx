@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { HearingView } from "../types";
+import type { GeneralPublicEntry, HearingView, PartyRole } from "../types";
 import { api, ApiError } from "../api";
 import { t, hasKey } from "../i18n";
 
@@ -31,6 +31,15 @@ function periodDuration(startedAt: string, endedAt: string | null) {
   return `${h}:${m}:${s}`;
 }
 
+// Non-bold "(role)" parenthetical next to a party's name — same treatment
+// as JudgesPanel.tsx gives judges/auxiliaries.
+const PARTY_ROLE_KEY = {
+  PARTY: "roles.PARTY",
+  COUNSEL: "roles.COUNSEL",
+  WITNESS: "roles.WITNESS",
+  OTHER: "roles.OTHER",
+} as const;
+
 /**
  * Renders a backend ApiError (a stable {code, ...details} — backend/src/
  * routes/hearings.ts's respondError) in Spanish via i18n, instead of
@@ -46,17 +55,141 @@ function describeApiError(err: unknown): string {
   return t("errors.GENERIC");
 }
 
+/**
+ * Inline control on an absent party row — maps an unresolved
+ * general-public person onto THIS specific party (backend's existing
+ * remap endpoint, mappedToExpectedPartyId), which now actually flips
+ * their presence (backend/src/services/statusDerivation.ts fix).
+ */
+function MapToControl({
+  hearingId,
+  expectedPartyId,
+  generalPublic,
+}: {
+  hearingId: string;
+  expectedPartyId: string;
+  generalPublic: GeneralPublicEntry[];
+}) {
+  const [email, setEmail] = useState("");
+  if (!generalPublic.length) return null;
+  return (
+    <span className="map-to-row">
+      <select value={email} onChange={(e) => setEmail(e.target.value)}>
+        <option value="">{t("hearingCard.mapToPlaceholder")}</option>
+        {generalPublic.map((g) => (
+          <option key={g.email} value={g.email}>
+            {g.displayName || g.email}
+          </option>
+        ))}
+      </select>
+      <button
+        disabled={!email}
+        onClick={async () => {
+          await api.createRemap({
+            rosterEmail: email,
+            hearingId,
+            mappedToExpectedPartyId: expectedPartyId,
+          });
+          setEmail("");
+        }}
+      >
+        {t("hearingCard.mapToConfirm")}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Trailing control, last item in a hearing card — turns a general-public
+ * person into a brand-new ExpectedParty on this hearing (backend's
+ * existing POST /parties route), with a chosen role.
+ */
+function AddPartyControl({
+  hearingId,
+  generalPublic,
+}: {
+  hearingId: string;
+  generalPublic: GeneralPublicEntry[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<PartyRole | "">("");
+
+  if (!open) {
+    return (
+      <div className="add-party">
+        <button className="add-party-toggle" onClick={() => setOpen(true)}>
+          {t("hearingCard.addParty")}
+        </button>
+      </div>
+    );
+  }
+
+  const selected = generalPublic.find((g) => g.email === email);
+
+  return (
+    <div className="add-party">
+      <div className="add-party-form">
+        <select value={email} onChange={(e) => setEmail(e.target.value)}>
+          <option value="">{t("hearingCard.addPartySelectPerson")}</option>
+          {generalPublic.map((g) => (
+            <option key={g.email} value={g.email}>
+              {g.displayName || g.email}
+            </option>
+          ))}
+        </select>
+        <select value={role} onChange={(e) => setRole(e.target.value as PartyRole)}>
+          <option value="">{t("hearingCard.addPartySelectRole")}</option>
+          {(Object.keys(PARTY_ROLE_KEY) as PartyRole[]).map((r) => (
+            <option key={r} value={r}>
+              {t(PARTY_ROLE_KEY[r])}
+            </option>
+          ))}
+        </select>
+        <button
+          disabled={!selected || !role}
+          onClick={async () => {
+            if (!selected || !role) return;
+            await api.addParty(hearingId, {
+              name: selected.displayName || selected.email,
+              emails: [selected.email],
+              role,
+            });
+            setOpen(false);
+            setEmail("");
+            setRole("");
+          }}
+        >
+          {t("hearingCard.addPartyConfirm")}
+        </button>
+        <button
+          onClick={() => {
+            setOpen(false);
+            setEmail("");
+            setRole("");
+          }}
+        >
+          {t("hearingCard.addPartyCancel")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function HearingCard({
   hearing,
   notes,
   onNotesChange,
   spotlight,
+  generalPublic,
 }: {
   hearing: HearingView;
   /** This viewer's own note for this hearing — personal, never shared (backend/src/routes/notes.ts). */
   notes: string;
   onNotesChange: (hearingId: string, text: string) => void;
   spotlight?: boolean;
+  /** Unresolved general-public entries — source for Map-to/Add-party controls. */
+  generalPublic: GeneralPublicEntry[];
 }) {
   const [draft, setDraft] = useState(notes);
   const elapsed = useElapsed(hearing.state === "ACTIVE" ? hearing.activePeriodStartedAt : null);
@@ -86,10 +219,19 @@ export function HearingCard({
         <div className="participant-row" key={p.expectedPartyId}>
           <span>{p.present ? "✓" : "✕"}</span>
           <span className="name-email">
-            <span className="name">{p.email.split("@")[0]}</span>
+            <span className="name">
+              {p.name} <span className="role-label">({t(PARTY_ROLE_KEY[p.role])})</span>
+            </span>
             <span className="email">{p.email}</span>
           </span>
           {!p.present && <span className="absent-label">{t("hearingCard.absent")}</span>}
+          {!p.present && (
+            <MapToControl
+              hearingId={hearing.id}
+              expectedPartyId={p.expectedPartyId}
+              generalPublic={generalPublic}
+            />
+          )}
           <span className="row-actions">
             {/* Call only makes sense for someone not already on the call. */}
             {!p.present && (
@@ -150,9 +292,17 @@ export function HearingCard({
       />
 
       {hearing.state === "ACTIVE" && (
-        <button className="primary-action" onClick={() => api.completeHearing(hearing.id)}>
-          {t("hearingCard.markCompleted")}
-        </button>
+        <div className="action-row">
+          <button className="primary-action" onClick={() => api.completeHearing(hearing.id)}>
+            {t("hearingCard.markCompleted")}
+          </button>
+          <button
+            className="primary-action secondary-action"
+            onClick={() => api.returnToPending(hearing.id)}
+          >
+            {t("hearingCard.returnToPending")}
+          </button>
+        </div>
       )}
       {hearing.state === "PENDING" && (
         <button
@@ -181,20 +331,30 @@ export function HearingCard({
               </div>
             ))}
           </div>
-          <button
-            className="primary-action"
-            onClick={async () => {
-              try {
-                await api.reactivateHearing(hearing.id);
-              } catch (err) {
-                alert(describeApiError(err));
-              }
-            }}
-          >
-            {t("hearingCard.reactivate")}
-          </button>
+          <div className="action-row">
+            <button
+              className="primary-action"
+              onClick={async () => {
+                try {
+                  await api.reactivateHearing(hearing.id);
+                } catch (err) {
+                  alert(describeApiError(err));
+                }
+              }}
+            >
+              {t("hearingCard.reactivate")}
+            </button>
+            <button
+              className="primary-action secondary-action"
+              onClick={() => api.returnToPending(hearing.id)}
+            >
+              {t("hearingCard.returnToPending")}
+            </button>
+          </div>
         </>
       )}
+
+      <AddPartyControl hearingId={hearing.id} generalPublic={generalPublic} />
     </div>
   );
 }

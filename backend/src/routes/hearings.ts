@@ -7,6 +7,7 @@ import {
   activateHearing,
   completeHearing,
   reactivateHearing,
+  returnHearingToPending,
   AlreadyActiveHearingError,
 } from "../graph/roleManager";
 import { buildStateSnapshot } from "../services/stateSnapshot";
@@ -107,6 +108,17 @@ hearingsRouter.post("/:id/reactivate", async (req, res) => {
     const period = await reactivateHearing(meetingId, req.params.id, actorEmail(req));
     await broadcastState(meetingId);
     res.json({ ok: true, periodId: period.id });
+  } catch (err) {
+    respondError(res, err);
+  }
+});
+
+hearingsRouter.post("/:id/return-to-pending", async (req, res) => {
+  const meetingId = meetingIdParam(req);
+  try {
+    await returnHearingToPending(meetingId, req.params.id, actorEmail(req));
+    await broadcastState(meetingId);
+    res.json({ ok: true });
   } catch (err) {
     respondError(res, err);
   }

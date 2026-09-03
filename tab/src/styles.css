@@ -81,6 +81,9 @@ body {
 .name { font-weight: 500; }
 .email, .muted { color: var(--muted); font-size: 12px; }
 .absent-label { color: var(--muted); font-size: 12px; }
+/* Non-bold "(role)" parenthetical next to a name — JudgesPanel and
+   HearingCard party rows. */
+.role-label { color: var(--muted); font-weight: 400; font-size: 13px; }
 .row-actions { display: flex; gap: 6px; margin-left: auto; }
 .row-actions button {
   border: none; background: none; cursor: pointer; font-size: 14px;
@@ -120,6 +123,37 @@ textarea {
   cursor: pointer;
 }
 .primary-action:hover { background: #f6f8fa; }
+
+/* Two side-by-side actions — ACTIVE's [Mark completed][Return to pending],
+   COMPLETED's [Reactivate][Return to pending]. */
+.action-row { display: flex; gap: 6px; }
+.action-row .primary-action { flex: 1; }
+.secondary-action {
+  border: 1px solid var(--border);
+  background: white;
+  color: #57606a;
+}
+.secondary-action:hover { background: #f6f8fa; }
+
+/* Inline "Map to…" control on an absent party row. */
+.map-to-row { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.map-to-row select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border); }
+.map-to-row button {
+  font-size: 12px; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--accent, #6264a7);
+  background: white; color: var(--accent, #6264a7); cursor: pointer;
+}
+
+/* Trailing "+ Add party" control, last item in a hearing card. */
+.add-party { margin-top: 8px; }
+.add-party-toggle {
+  width: 100%; padding: 8px; border-radius: 8px; border: 1px dashed var(--border);
+  background: white; color: #57606a; font-size: 13px; cursor: pointer;
+}
+.add-party-toggle:hover { background: #f6f8fa; }
+.add-party-form { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.add-party-form select, .add-party-form button {
+  padding: 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;
+}
 
 .periods-history { margin: 6px 0; }
 .period-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }

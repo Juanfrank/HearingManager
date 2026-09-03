@@ -1,8 +1,12 @@
 export type AttendanceStatus = "ready" | "incomplete" | "no_show";
 export type HearingLifecycleState = "PENDING" | "ACTIVE" | "COMPLETED";
 
+export type PartyRole = "PARTY" | "COUNSEL" | "WITNESS" | "OTHER";
+
 export interface PartyPresence {
   expectedPartyId: string;
+  name: string;
+  role: PartyRole;
   email: string;
   present: boolean;
 }

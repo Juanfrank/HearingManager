@@ -5,8 +5,8 @@ import {
 } from "./statusDerivation";
 
 const parties = [
-  { id: "p1", emails: ["ana.torres@mail.com"] },
-  { id: "p2", emails: ["luis.pena@mail.com"] },
+  { id: "p1", name: "Ana Torres", role: "PARTY", emails: ["ana.torres@mail.com"] },
+  { id: "p2", name: "Luis Peña", role: "PARTY", emails: ["luis.pena@mail.com"] },
 ];
 
 describe("deriveHearingAttendance", () => {
@@ -49,7 +49,9 @@ describe("deriveHearingAttendance", () => {
       { email: "ana.torres@mail.com", isConnected: true },
       { email: "m.gomez83@gmail.com", isConnected: true },
     ];
-    const soloParty = [{ id: "p1", emails: ["ana.torres@mail.com"] }];
+    const soloParty = [
+      { id: "p1", name: "Ana Torres", role: "PARTY", emails: ["ana.torres@mail.com"] },
+    ];
     const remaps = [
       {
         rosterEmail: "m.gomez83@gmail.com",
@@ -77,7 +79,9 @@ describe("deriveHearingAttendance", () => {
         undoneAt: new Date(),
       },
     ];
-    const partiesWithRemapTarget = [{ id: "p1", emails: ["m.gomez83@gmail.com"] }];
+    const partiesWithRemapTarget = [
+      { id: "p1", name: "Gómez Co-counsel", role: "COUNSEL", emails: ["m.gomez83@gmail.com"] },
+    ];
 
     const withRemap = deriveHearingAttendance(
       "h1",
@@ -104,7 +108,12 @@ describe("deriveHearingAttendance", () => {
   it("counts a party present if ANY of their known emails is connected", () => {
     const roster = [{ email: "alternative@judge.com", isConnected: true }];
     const multiEmailParty = [
-      { id: "p1", emails: ["primary@judge.com", "alternative@judge.com"] },
+      {
+        id: "p1",
+        name: "Multi Email",
+        role: "PARTY",
+        emails: ["primary@judge.com", "alternative@judge.com"],
+      },
     ];
     const result = deriveHearingAttendance("h1", multiEmailParty, roster, []);
     expect(result.status).toBe("ready");
@@ -112,6 +121,45 @@ describe("deriveHearingAttendance", () => {
     // Display email is still the first one, regardless of which email
     // they actually joined with.
     expect(result.parties[0].email).toBe("primary@judge.com");
+  });
+
+  it("marks an absent party present once a general-public person is mapped onto them via mappedToExpectedPartyId", () => {
+    // p2 (Luis Peña) has no matching roster entry under any of their own
+    // emails — the only way they show connected is via an EXISTING_PARTY
+    // remap of an unmatched general-public roster email onto them
+    // (tab's HearingCard "Map to…" control on an absent party).
+    const roster = [
+      { email: "ana.torres@mail.com", isConnected: true },
+      { email: "observer.press@outlook.com", isConnected: true },
+    ];
+    const remaps = [
+      {
+        rosterEmail: "observer.press@outlook.com",
+        hearingId: "h1",
+        undoneAt: null,
+        mappedToExpectedPartyId: "p2",
+      },
+    ];
+    const result = deriveHearingAttendance("h1", parties, roster, remaps);
+    expect(result.status).toBe("ready");
+    expect(result.parties.find((p) => p.expectedPartyId === "p2")?.present).toBe(true);
+  });
+
+  it("does not mark a party present from an undone existing-party remap", () => {
+    const roster = [
+      { email: "ana.torres@mail.com", isConnected: true },
+      { email: "observer.press@outlook.com", isConnected: true },
+    ];
+    const remaps = [
+      {
+        rosterEmail: "observer.press@outlook.com",
+        hearingId: "h1",
+        undoneAt: new Date(),
+        mappedToExpectedPartyId: "p2",
+      },
+    ];
+    const result = deriveHearingAttendance("h1", parties, roster, remaps);
+    expect(result.parties.find((p) => p.expectedPartyId === "p2")?.present).toBe(false);
   });
 });
 

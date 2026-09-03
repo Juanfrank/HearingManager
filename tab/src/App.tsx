@@ -88,6 +88,7 @@ export default function App() {
         hearings={snapshot.hearings}
         myNotes={myNotes}
         onNotesChange={onNotesChange}
+        generalPublic={snapshot.generalPublic}
       />
       <GeneralPublic
         entries={snapshot.generalPublic}

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type {
   GeneralPublicEntry,
   HearingView,
@@ -9,60 +8,10 @@ import { Collapsible } from "./Collapsible";
 import { api } from "../api";
 import { t } from "../i18n";
 
-function MapAsControl({ email, hearings }: { email: string; hearings: HearingView[] }) {
-  const [hearingId, setHearingId] = useState("");
-  const [partyId, setPartyId] = useState("");
-  const [newName, setNewName] = useState("");
-
-  const hearing = hearings.find((h) => h.id === hearingId);
-
-  return (
-    <div className="map-as-row">
-      <select value={hearingId} onChange={(e) => { setHearingId(e.target.value); setPartyId(""); }}>
-        <option value="">{t("generalPublic.mapAs")}</option>
-        {hearings.map((h) => (
-          <option key={h.id} value={h.id}>
-            {t("hearingCard.number", { number: h.hearingNumber })}
-          </option>
-        ))}
-      </select>
-      {hearing && (
-        <>
-          <select value={partyId} onChange={(e) => { setPartyId(e.target.value); setNewName(""); }}>
-            <option value="">{t("generalPublic.existingParty")}</option>
-            {hearing.parties.map((p) => (
-              <option key={p.expectedPartyId} value={p.expectedPartyId}>
-                {p.email}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder={t("generalPublic.newPartyName")}
-            value={newName}
-            onChange={(e) => { setNewName(e.target.value); setPartyId(""); }}
-          />
-          <button
-            disabled={!partyId && !newName}
-            onClick={async () => {
-              await api.createRemap({
-                rosterEmail: email,
-                hearingId,
-                mappedToExpectedPartyId: partyId || undefined,
-                newPartyName: newName || undefined,
-              });
-              setHearingId("");
-              setPartyId("");
-              setNewName("");
-            }}
-          >
-            {t("generalPublic.assign")}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
+// Mapping a general-public person onto a party, or turning them into a
+// brand-new party, now happens on the hearing block itself (HearingCard's
+// "Map to…" control on an absent party row, and its trailing "+ Add
+// party" control) — this panel is presence + mic/camera access only.
 export function GeneralPublic({
   entries,
   remapped,
@@ -105,7 +54,6 @@ export function GeneralPublic({
                 </button>
               </div>
             )}
-            <MapAsControl email={e.email} hearings={hearings} />
           </div>
         );
       })}

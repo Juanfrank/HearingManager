@@ -10,6 +10,9 @@ CREATE TYPE "JudgeRole" AS ENUM ('JUDGE', 'PRESIDING_JUDGE', 'SECRETARY', 'OTHER
 -- CreateEnum
 CREATE TYPE "RemapTargetType" AS ENUM ('EXISTING_PARTY', 'NEW_PARTY');
 
+-- CreateEnum
+CREATE TYPE "RosterEventType" AS ENUM ('JOINED', 'LEFT');
+
 -- CreateTable
 CREATE TABLE "Meeting" (
     "id" TEXT NOT NULL,
@@ -97,6 +100,18 @@ CREATE TABLE "RosterEntry" (
 );
 
 -- CreateTable
+CREATE TABLE "RosterConnectionEvent" (
+    "id" TEXT NOT NULL,
+    "meetingId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "displayName" TEXT NOT NULL,
+    "type" "RosterEventType" NOT NULL,
+    "occurredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RosterConnectionEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "RemapMapping" (
     "id" TEXT NOT NULL,
     "rosterEmail" TEXT NOT NULL,
@@ -167,6 +182,12 @@ CREATE INDEX "RosterEntry_meetingId_idx" ON "RosterEntry"("meetingId");
 CREATE UNIQUE INDEX "RosterEntry_meetingId_email_key" ON "RosterEntry"("meetingId", "email");
 
 -- CreateIndex
+CREATE INDEX "RosterConnectionEvent_meetingId_idx" ON "RosterConnectionEvent"("meetingId");
+
+-- CreateIndex
+CREATE INDEX "RosterConnectionEvent_meetingId_email_idx" ON "RosterConnectionEvent"("meetingId", "email");
+
+-- CreateIndex
 CREATE INDEX "RemapMapping_hearingId_idx" ON "RemapMapping"("hearingId");
 
 -- CreateIndex
@@ -204,6 +225,9 @@ ALTER TABLE "ExpectedParty" ADD CONSTRAINT "ExpectedParty_hearingId_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "RosterEntry" ADD CONSTRAINT "RosterEntry_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "Meeting"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RosterConnectionEvent" ADD CONSTRAINT "RosterConnectionEvent_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "Meeting"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RemapMapping" ADD CONSTRAINT "RemapMapping_mappedToExpectedPartyId_fkey" FOREIGN KEY ("mappedToExpectedPartyId") REFERENCES "ExpectedParty"("id") ON DELETE SET NULL ON UPDATE CASCADE;

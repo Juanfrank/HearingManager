@@ -1,4 +1,4 @@
-import type { HearingView } from "../types";
+import type { GeneralPublicEntry, HearingView } from "../types";
 import { Collapsible } from "./Collapsible";
 import { HearingCard } from "./HearingCard";
 import { t } from "../i18n";
@@ -7,10 +7,14 @@ export function HearingsSection({
   hearings,
   myNotes,
   onNotesChange,
+  generalPublic,
 }: {
   hearings: HearingView[];
   myNotes: Record<string, string>;
   onNotesChange: (hearingId: string, text: string) => void;
+  /** Unresolved general-public entries — source list for a hearing card's
+   * "Map to…" (on an absent party) and "+ Add party" controls. */
+  generalPublic: GeneralPublicEntry[];
 }) {
   // At most one hearing can be ACTIVE at a time (backend/src/graph/
   // roleManager.ts rejects activating a second one) — pull it out of the
@@ -33,6 +37,7 @@ export function HearingsSection({
       notes={myNotes[h.id] ?? ""}
       onNotesChange={onNotesChange}
       spotlight={spotlight}
+      generalPublic={generalPublic}
     />
   );
 

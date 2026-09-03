@@ -78,6 +78,12 @@ export const api = {
   activateHearing: (id: string) => request(`/hearings/${id}/activate`, { method: "POST" }),
   completeHearing: (id: string) => request(`/hearings/${id}/complete`, { method: "POST" }),
   reactivateHearing: (id: string) => request(`/hearings/${id}/reactivate`, { method: "POST" }),
+  returnToPending: (id: string) => request(`/hearings/${id}/return-to-pending`, { method: "POST" }),
+  /** Turns a general-public person into a brand-new party on this hearing — backend/src/routes/parties.ts. */
+  addParty: (
+    hearingId: string,
+    payload: { name: string; emails: string[]; role: "PARTY" | "COUNSEL" | "WITNESS" | "OTHER" },
+  ) => request("/parties", { method: "POST", body: JSON.stringify({ hearingId, ...payload }) }),
   createRemap: (payload: {
     rosterEmail: string;
     hearingId: string;

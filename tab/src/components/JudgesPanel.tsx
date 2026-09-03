@@ -3,16 +3,23 @@ import { Collapsible } from "./Collapsible";
 import { api } from "../api";
 import { t } from "../i18n";
 
+// Non-bold "(role)" parenthetical shown next to every name (judges,
+// auxiliaries, and — see HearingCard.tsx — parties too).
+const JUDGE_ROLE_KEY = {
+  JUDGE: "roles.JUDGE",
+  PRESIDING_JUDGE: "roles.PRESIDING_JUDGE",
+  SECRETARY: "roles.SECRETARY",
+  OTHER_OFFICER: "roles.OTHER_OFFICER",
+} as const;
+
 function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
-  const presiding = judge.role === "PRESIDING_JUDGE";
+  const roleLabel = t(JUDGE_ROLE_KEY[judge.role]);
+  const parenthetical = isMe ? `${roleLabel}, ${t("judgesPanel.you")}` : roleLabel;
   return (
     <div className={`participant-row judge-row ${isMe ? "is-me" : ""}`}>
       <span className={`presence-dot ${judge.connected ? "connected" : ""}`} />
-      <span className="name">
-        {judge.name}
-        {isMe && t("judgesPanel.you")}
-        {presiding && !isMe && t("judgesPanel.presiding")}
-      </span>
+      <span className="name">{judge.name}</span>{" "}
+      <span className="role-label">({parenthetical})</span>
       {!isMe && (
         <span className="row-actions">
           {/* Call only makes sense for someone not already on the call. */}

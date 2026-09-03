@@ -12,6 +12,8 @@ export type DerivedAttendanceStatus = "ready" | "incomplete" | "no_show";
 
 export interface ExpectedPartyLike {
   id: string;
+  name: string;
+  role: string;
   // A person can have more than one known email (docs/README.md,
   // "Provisioning" / case-management import) — joining Teams with ANY of
   // them counts as present, not just the first.
@@ -27,10 +29,16 @@ export interface RemapMappingLike {
   rosterEmail: string;
   hearingId: string;
   undoneAt: Date | null;
+  // Set when this remap targets an existing ExpectedParty (as opposed to a
+  // freeform new-party name) — see the presence fix in
+  // deriveHearingAttendance below.
+  mappedToExpectedPartyId?: string | null;
 }
 
 export interface PartyPresence {
   expectedPartyId: string;
+  name: string;
+  role: string;
   // Display/messaging email — the first of the party's known emails.
   // present is computed against ALL of them, not just this one.
   email: string;
@@ -47,10 +55,12 @@ export interface DerivedHearingAttendance {
 const norm = (email: string) => email.trim().toLowerCase();
 
 /**
- * Connected roster emails, expanded so a remapped roster email also counts
- * as connected for the hearing it was remapped into (docs §5.5: "treat
- * that roster entry as present in the target hearing for status/derivation
- * purposes going forward").
+ * Currently-connected roster emails for this hearing. Note this does NOT
+ * by itself make a remapped-in person's TARGET party present — that
+ * happens in deriveHearingAttendance below via remapPresentPartyIds, since
+ * a remapped roster email is (by definition) not one of the target
+ * party's own known emails. This set stays useful on its own for anything
+ * that just needs "who is connected," independent of party matching.
  */
 export function connectedEmailsForHearing(
   hearingId: string,
@@ -83,10 +93,31 @@ export function deriveHearingAttendance(
 ): DerivedHearingAttendance {
   const connected = connectedEmailsForHearing(hearingId, roster, remaps);
 
+  // Existing-party remaps (docs §5.5 — "Map to…" on an absent party) mark
+  // that SPECIFIC party present once their mapped roster email is
+  // connected, regardless of whether that email is one of the party's own
+  // known `emails` (it usually isn't — that's the whole point of mapping
+  // an unmatched general-public person onto them). NEW_PARTY remaps don't
+  // target any expectedPartyId and so don't affect this set.
+  const remapPresentPartyIds = new Set(
+    remaps
+      .filter(
+        (m) =>
+          m.hearingId === hearingId &&
+          !m.undoneAt &&
+          m.mappedToExpectedPartyId &&
+          connected.has(norm(m.rosterEmail)),
+      )
+      .map((m) => m.mappedToExpectedPartyId as string),
+  );
+
   const parties: PartyPresence[] = expectedParties.map((p) => ({
     expectedPartyId: p.id,
+    name: p.name,
+    role: p.role,
     email: p.emails[0] ?? "",
-    present: p.emails.some((e) => connected.has(norm(e))),
+    present:
+      p.emails.some((e) => connected.has(norm(e))) || remapPresentPartyIds.has(p.id),
   }));
 
   const presentCount = parties.filter((p) => p.present).length;

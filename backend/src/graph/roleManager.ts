@@ -243,3 +243,46 @@ export async function reactivateHearing(
 
   return period;
 }
+
+/**
+ * Sends a hearing back to the pending bin from ACTIVE or COMPLETED — not a
+ * "real" completion (no attendance snapshot is frozen, unlike
+ * completeHearing above), just a state reset so staff can re-run it later.
+ * No "already active" guard needed here — the opposite direction always
+ * frees up the single-active-hearing slot rather than contending for it.
+ */
+export async function returnHearingToPending(
+  meetingId: string,
+  hearingId: string,
+  actorEmail: string,
+) {
+  const hearing = await prisma.hearing.findFirstOrThrow({
+    where: { id: hearingId, meetingId },
+  });
+  const before = { state: hearing.state };
+
+  const openPeriod = await prisma.hearingPeriod.findFirst({
+    where: { hearingId, endedAt: null },
+    orderBy: { startedAt: "desc" },
+  });
+  if (openPeriod) {
+    await prisma.hearingPeriod.update({
+      where: { id: openPeriod.id },
+      data: { endedAt: new Date() },
+    });
+  }
+  await prisma.hearing.update({ where: { id: hearingId }, data: { state: "PENDING" } });
+
+  // This hearing's parties (if any were presenter) drop back to attendee
+  // unless a judge/grant still covers them.
+  await syncMeetingRoles(meetingId);
+
+  await logAudit({
+    meetingId,
+    hearingId,
+    actorEmail,
+    action: "hearing.returnToPending",
+    before,
+    after: { state: "PENDING", closedPeriodId: openPeriod?.id ?? null },
+  });
+}

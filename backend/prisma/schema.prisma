@@ -41,6 +41,11 @@ enum RemapTargetType {
   NEW_PARTY
 }
 
+enum RosterEventType {
+  JOINED
+  LEFT
+}
+
 // The tenant boundary: one Meeting per live Teams meeting (docs §1 — "one
 // meeting per hearing day/session"). id is the Teams conversation/meeting
 // ID (activity.conversation.id on the bot side, context.meeting.id from
@@ -65,6 +70,7 @@ model Meeting {
 
   hearings        Hearing[]
   rosterEntries   RosterEntry[]
+  rosterEvents    RosterConnectionEvent[]
   judges          JudgeOrAuxiliary[]
   auditEntries    AuditLogEntry[]
   presenterGrants PresenterGrant[]
@@ -181,6 +187,28 @@ model RosterEntry {
 
   @@unique([meetingId, email])
   @@index([meetingId])
+}
+
+// Append-only join/leave log — RosterEntry above is a single overwritten
+// row per (meetingId, email), so it can only ever answer "is this person
+// connected right now" and "when did they last join/leave," never "list
+// every time this person joined/left" (someone can drop and rejoin more
+// than once in a session). Fed from the exact same roster events as
+// RosterEntry (routes/roster.ts's applyRosterEvent, called for judges,
+// parties, and general public alike) — this is what lets the session-end
+// summary (services/sessionSummary.ts) print a full connection log per
+// person, including general public.
+model RosterConnectionEvent {
+  id          String           @id @default(cuid())
+  meetingId   String
+  meeting     Meeting          @relation(fields: [meetingId], references: [id])
+  email       String
+  displayName String
+  type        RosterEventType
+  occurredAt  DateTime         @default(now())
+
+  @@index([meetingId])
+  @@index([meetingId, email])
 }
 
 model RemapMapping {

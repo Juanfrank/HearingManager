@@ -305,6 +305,17 @@ swapping — see `graph/roleManager.ts`'s `activateHearing`/
 outside the Ready/Incomplete/No-show groups entirely
 (`tab/src/components/HearingsSection.tsx`).
 
+**Return to pending.** `graph/roleManager.ts`'s `returnHearingToPending()`
+(`POST .../hearings/:id/return-to-pending`) sends a hearing back to
+`PENDING` from either `ACTIVE` or `COMPLETED` — not a "real" completion (no
+attendance snapshot is frozen, unlike `completeHearing()`), just a state
+reset so staff can re-run it later; any open `HearingPeriod` is closed and
+`syncMeetingRoles()` runs so that hearing's parties drop back to attendee
+unless a judge or grant still covers them. Audited like every other
+transition (`hearing.returnToPending`). The tab shows it as a second button
+next to "Mark as completed" (on an `ACTIVE` card) and next to "Reactivate"
+(on a `COMPLETED` card) — see `HearingCard.tsx`.
+
 **Mute / camera-off are a separate, weaker lever than the role PATCH.**
 Demoting someone to attendee only changes their *ability to self-unmute
 going forward* (Teams' standard "only organizers/presenters can turn on
@@ -316,6 +327,49 @@ mute/camera-off buttons are wired up and mocked under `GRAPH_MODE=mock`
 (`graph/client.ts`'s `muteParticipant`/`setParticipantCamera`) so the UI
 and audit trail exist now; real mode throws until that Calls API
 prerequisite is actually in place.
+
+## Role labels
+
+Every judge/auxiliary row and every party row shows that person's role as a
+non-bold `(role)` parenthetical right after their (bold) name —
+`JudgeRole`/`PartyRole` enum values translated via the tab's `roles.*` i18n
+keys (`tab/src/i18n/es.ts`), not just implied by which subgroup they're
+rendered under. `JudgesPanel.tsx` folds the existing "(you)" indicator into
+the same parenthetical (e.g. "Ana Ramírez (Juez, usted)"). Party names come
+from `ExpectedParty.name` (`backend/src/services/statusDerivation.ts`
+carries `name`/`role` through into each `PartyPresence` entry) rather than
+guessing a display name from the local part of their email, which
+`HearingCard.tsx` used to do.
+
+## Hearing-scoped party mapping
+
+Turning an unresolved general-public roster entry into a hearing party — or
+mapping one onto an existing, still-absent party — happens on the hearing
+card itself, not from the General public panel (`GeneralPublic.tsx` is now
+presence + mic/camera grant only):
+
+- **"Map to…"**, shown next to each *absent* party row (`HearingCard.tsx`'s
+  `MapToControl`), lets staff pick an unresolved general-public person and
+  assign them to that specific party — this reuses the existing
+  `POST .../remap` endpoint with `mappedToExpectedPartyId` set (the same
+  mechanism `RemapMapping` always had), so the person's connection now
+  counts toward that party without changing their own known emails.
+- **"+ Add party"**, the last item in every hearing card
+  (`HearingCard.tsx`'s `AddPartyControl`), turns a general-public person
+  into a brand-new `ExpectedParty` on that hearing via the existing
+  `POST .../parties` route, with a role chosen from `PartyRole`. Since the
+  new party's `emails` includes the email they're already connected with,
+  they show present immediately — no remap needed for this path.
+
+**Bug fix this relied on:** `deriveHearingAttendance`
+(`backend/src/services/statusDerivation.ts`) previously never actually
+marked a party present from an `EXISTING_PARTY` remap unless the mapped
+roster email happened to already be one of that party's own `emails` —
+which defeats the point, since a remap exists precisely because the
+person's connected email *isn't* one of the party's known emails. Fixed to
+explicitly OR "this party has an active, connected remap targeting it"
+into its `present` result, matching the intent already stated in the
+function's own doc comment.
 
 ## Personal, per-hearing notes
 
@@ -340,15 +394,38 @@ the tab today, so nothing currently exposes it.
 
 `POST /api/meetings/:meetingId/end-session` (`routes/session.ts`) sends
 every judge/auxiliary in the meeting ONE personalized message
-(`services/sessionSummary.ts`) summarizing every hearing's final state —
-attendance plus, per hearing, **only that recipient's own note**, never
-another author's. For a `COMPLETED` hearing, attendance comes from the
-frozen snapshot `graph/roleManager.ts`'s `completeHearing()` stores on the
-`hearing.complete` audit entry at the moment it closed (not recomputed
-live, which can drift as people leave the call afterward); a hearing still
-`PENDING`/`ACTIVE` when the session ends falls back to live attendance,
-labeled as such. Fires once — `meeting.endedAt` blocks a second call with
-409. Triggered from the tab via the "End session & send summaries" button
+(`services/sessionSummary.ts`) with four parts:
+
+1. **Per hearing** — its final state label, **present and absent parties by
+   name** (not just a count), **total active duration** (Σ across every
+   activation period), each individual activation **time-span**
+   (start–end, from `HearingPeriod`), and — appended last — **only that
+   recipient's own note**, never another author's. For a `COMPLETED`
+   hearing, the present/absent names and counts come from the frozen
+   snapshot `graph/roleManager.ts`'s `completeHearing()` stores on the
+   `hearing.complete` audit entry at the moment it closed (not recomputed
+   live, which can drift as people leave the call afterward); a hearing
+   still `PENDING`/`ACTIVE` when the session ends falls back to live
+   attendance, labeled as such. Periods themselves are always read live —
+   they don't change once a hearing closes.
+2. **A shared participant connection log** — every join/leave timestamp for
+   every person who was ever on the roster **including general public**,
+   from the new append-only `RosterConnectionEvent` table
+   (`backend/prisma/schema.prisma`). `RosterEntry` alone can't answer this:
+   it's a single row per `(meetingId, email)`, overwritten on every
+   join/leave, so it only ever knows the *latest* transition. Every roster
+   event (`routes/roster.ts`'s `applyRosterEvent`, the one path both the
+   real bot and the dev-simulation endpoint go through) now also inserts a
+   `RosterConnectionEvent` row, capturing someone dropping and rejoining
+   more than once in a session. This block is identical for every
+   recipient.
+3. **A raw system audit log**, last — every `AuditLogEntry` for the meeting
+   in chronological order, printed as technical `[time] actor — action`
+   lines rather than translated prose (it's a record for auditing, not a
+   narrative). Also identical for every recipient.
+
+Fires once — `meeting.endedAt` blocks a second call with 409. Triggered
+from the tab via the "End session & send summaries" button
 (confirm-before-firing, since it notifies people and can't be undone).
 
 ## Internationalization

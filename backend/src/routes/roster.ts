@@ -86,6 +86,22 @@ export async function applyRosterEvent(
     });
   }
 
+  // Append-only history, unlike RosterEntry above (a single row per
+  // (meetingId, email), overwritten on every event) — this is what lets
+  // the session-end summary (services/sessionSummary.ts) print every
+  // join/leave for every participant, including someone who dropped and
+  // rejoined more than once, and including general public (this function
+  // is the one code path every roster event goes through regardless of
+  // role — see the module comment above).
+  await prisma.rosterConnectionEvent.create({
+    data: {
+      meetingId,
+      email: normalizedEmail,
+      displayName,
+      type: type === "joined" ? "JOINED" : "LEFT",
+    },
+  });
+
   // A judge/auxiliary joining or leaving changes who should be presenter
   // right now (services/presenterRules.ts) — not just at Activate/
   // Complete/Reactivate. Never let a Graph hiccup break roster tracking

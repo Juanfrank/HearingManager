@@ -14,12 +14,21 @@ export const es = {
   "common.callPhase2": "Las llamadas son una función de la Fase 2 (aún no implementada).",
   "common.messagePromptTo": "Mensaje para {name}:",
 
+  // --- roles (JudgeRole and PartyRole enum values) ---
+  "roles.JUDGE": "Juez",
+  "roles.PRESIDING_JUDGE": "Juez Presidente",
+  "roles.SECRETARY": "Secretario",
+  "roles.OTHER_OFFICER": "Otro funcionario",
+  "roles.PARTY": "Parte",
+  "roles.COUNSEL": "Abogado",
+  "roles.WITNESS": "Testigo",
+  "roles.OTHER": "Otro",
+
   // --- JudgesPanel ---
   "judgesPanel.title": "Jueces y auxiliares",
   "judgesPanel.judges": "Jueces",
   "judgesPanel.auxiliaries": "Auxiliares",
-  "judgesPanel.you": " (usted)",
-  "judgesPanel.presiding": " (Presidente)",
+  "judgesPanel.you": "usted",
 
   // --- HearingCard ---
   "hearingCard.number": "Audiencia #{number}",
@@ -32,6 +41,14 @@ export const es = {
   "hearingCard.markCompleted": "Marcar como completada",
   "hearingCard.setActive": "Establecer como activa",
   "hearingCard.reactivate": "Reactivar",
+  "hearingCard.returnToPending": "Volver a pendiente",
+  "hearingCard.mapToPlaceholder": "Mapear a…",
+  "hearingCard.mapToConfirm": "Asignar",
+  "hearingCard.addParty": "+ Agregar parte",
+  "hearingCard.addPartySelectPerson": "Seleccionar persona…",
+  "hearingCard.addPartySelectRole": "Seleccionar rol…",
+  "hearingCard.addPartyConfirm": "Confirmar",
+  "hearingCard.addPartyCancel": "Cancelar",
 
   // --- HearingsSection ---
   "hearingsSection.activeHearing": "⚖ Audiencia activa",
@@ -42,12 +59,10 @@ export const es = {
   "hearingsSection.noShow": "Inasistencia",
   "hearingsSection.completed": "Audiencias completadas",
 
-  // --- GeneralPublic ---
+  // --- GeneralPublic (presence + mic/camera grant only — mapping to a
+  // hearing/party now lives on HearingCard, see hearingCard.mapTo* /
+  // hearingCard.addParty* above) ---
   "generalPublic.title": "Público general",
-  "generalPublic.mapAs": "Asignar como...",
-  "generalPublic.existingParty": "Parte existente…",
-  "generalPublic.newPartyName": "…o nombre de nueva parte",
-  "generalPublic.assign": "Asignar",
   "generalPublic.micGranted": "🎙 Micrófono/cámara habilitados",
   "generalPublic.revoke": "Revocar",
   "generalPublic.grantMic": "Habilitar micrófono/cámara",
