@@ -47,13 +47,20 @@ async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole
     const remaps = await prisma.remapMapping.findMany({
       where: { hearingId: activeHearing.id, undoneAt: null },
     });
-    const attendance = deriveHearingAttendance(
-      activeHearing.id,
-      activeHearing.expectedParties,
-      roster,
-      remaps,
-    );
-    activeHearingPresentEmails = attendance.parties.filter((p) => p.present).map((p) => p.email);
+    const connectedRosterEmails = new Set(roster.map((r) => r.email.toLowerCase()));
+    // NOT attendance.parties[].email (that's just the display email — the
+    // first of a party's possibly-several known emails). A party present
+    // via their SECOND email needs THAT literal email promoted, since the
+    // final role map below is built by walking actual roster entries —
+    // promoting only their unconnected primary email would leave the
+    // roster entry they're actually connected as still stuck at attendee.
+    for (const party of activeHearing.expectedParties) {
+      for (const email of party.emails) {
+        if (connectedRosterEmails.has(email.toLowerCase())) {
+          activeHearingPresentEmails.push(email);
+        }
+      }
+    }
     // Remapped-in roster entries that are connected also get promoted,
     // even if the remap target hasn't been reflected as an ExpectedParty
     // row (e.g. mapped_to_type = new_party without a persisted party yet).

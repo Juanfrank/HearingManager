@@ -29,6 +29,7 @@ CREATE TABLE "Hearing" (
     "meetingId" TEXT NOT NULL,
     "hearingNumber" INTEGER NOT NULL,
     "state" "HearingState" NOT NULL DEFAULT 'PENDING',
+    "scheduledAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -74,8 +75,9 @@ CREATE TABLE "ExpectedParty" (
     "id" TEXT NOT NULL,
     "hearingId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "emails" TEXT[],
     "role" "PartyRole" NOT NULL DEFAULT 'PARTY',
+    "externalUid" TEXT,
 
     CONSTRAINT "ExpectedParty_pkey" PRIMARY KEY ("id")
 );
@@ -112,9 +114,10 @@ CREATE TABLE "RemapMapping" (
 CREATE TABLE "JudgeOrAuxiliary" (
     "id" TEXT NOT NULL,
     "meetingId" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "emails" TEXT[],
     "name" TEXT NOT NULL,
     "role" "JudgeRole" NOT NULL,
+    "externalUid" TEXT,
 
     CONSTRAINT "JudgeOrAuxiliary_pkey" PRIMARY KEY ("id")
 );
@@ -155,7 +158,7 @@ CREATE INDEX "HearingPeriod_hearingId_idx" ON "HearingPeriod"("hearingId");
 CREATE INDEX "ExpectedParty_hearingId_idx" ON "ExpectedParty"("hearingId");
 
 -- CreateIndex
-CREATE INDEX "ExpectedParty_email_idx" ON "ExpectedParty"("email");
+CREATE UNIQUE INDEX "ExpectedParty_hearingId_externalUid_key" ON "ExpectedParty"("hearingId", "externalUid");
 
 -- CreateIndex
 CREATE INDEX "RosterEntry_meetingId_idx" ON "RosterEntry"("meetingId");
@@ -173,7 +176,7 @@ CREATE INDEX "RemapMapping_rosterEmail_idx" ON "RemapMapping"("rosterEmail");
 CREATE INDEX "JudgeOrAuxiliary_meetingId_idx" ON "JudgeOrAuxiliary"("meetingId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "JudgeOrAuxiliary_meetingId_email_key" ON "JudgeOrAuxiliary"("meetingId", "email");
+CREATE UNIQUE INDEX "JudgeOrAuxiliary_meetingId_externalUid_key" ON "JudgeOrAuxiliary"("meetingId", "externalUid");
 
 -- CreateIndex
 CREATE INDEX "AuditLogEntry_meetingId_idx" ON "AuditLogEntry"("meetingId");

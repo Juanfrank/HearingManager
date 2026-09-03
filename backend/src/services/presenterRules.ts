@@ -17,7 +17,11 @@ export interface ConnectedEmailLike {
 }
 
 export interface JudgeLike {
-  email: string;
+  // A judge/auxiliary can have more than one known email — the Graph role
+  // map is keyed by whichever literal email they actually joined Teams
+  // with, so every one of their emails is checked, and whichever one(s)
+  // are actually connected get promoted (not necessarily their "primary").
+  emails: string[];
 }
 
 export interface PresenterGrantLike {
@@ -37,8 +41,10 @@ export function computePresenterEmails(params: {
   const presenters = new Set<string>();
 
   for (const j of params.judges) {
-    const email = norm(j.email);
-    if (connected.has(email)) presenters.add(email);
+    for (const email of j.emails) {
+      const normalized = norm(email);
+      if (connected.has(normalized)) presenters.add(normalized);
+    }
   }
 
   for (const email of params.activeHearingPresentEmails) {

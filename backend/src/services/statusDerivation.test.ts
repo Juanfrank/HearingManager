@@ -5,8 +5,8 @@ import {
 } from "./statusDerivation";
 
 const parties = [
-  { id: "p1", email: "ana.torres@mail.com" },
-  { id: "p2", email: "luis.pena@mail.com" },
+  { id: "p1", emails: ["ana.torres@mail.com"] },
+  { id: "p2", emails: ["luis.pena@mail.com"] },
 ];
 
 describe("deriveHearingAttendance", () => {
@@ -49,7 +49,7 @@ describe("deriveHearingAttendance", () => {
       { email: "ana.torres@mail.com", isConnected: true },
       { email: "m.gomez83@gmail.com", isConnected: true },
     ];
-    const soloParty = [{ id: "p1", email: "ana.torres@mail.com" }];
+    const soloParty = [{ id: "p1", emails: ["ana.torres@mail.com"] }];
     const remaps = [
       {
         rosterEmail: "m.gomez83@gmail.com",
@@ -77,7 +77,7 @@ describe("deriveHearingAttendance", () => {
         undoneAt: new Date(),
       },
     ];
-    const partiesWithRemapTarget = [{ id: "p1", email: "m.gomez83@gmail.com" }];
+    const partiesWithRemapTarget = [{ id: "p1", emails: ["m.gomez83@gmail.com"] }];
 
     const withRemap = deriveHearingAttendance(
       "h1",
@@ -99,6 +99,19 @@ describe("deriveHearingAttendance", () => {
     // underlying roster connection is unchanged; the meaningful effect of
     // undo is on generalPublicEntries (see below).
     expect(withUndoneRemap.status).toBe("ready");
+  });
+
+  it("counts a party present if ANY of their known emails is connected", () => {
+    const roster = [{ email: "alternative@judge.com", isConnected: true }];
+    const multiEmailParty = [
+      { id: "p1", emails: ["primary@judge.com", "alternative@judge.com"] },
+    ];
+    const result = deriveHearingAttendance("h1", multiEmailParty, roster, []);
+    expect(result.status).toBe("ready");
+    expect(result.parties[0].present).toBe(true);
+    // Display email is still the first one, regardless of which email
+    // they actually joined with.
+    expect(result.parties[0].email).toBe("primary@judge.com");
   });
 });
 

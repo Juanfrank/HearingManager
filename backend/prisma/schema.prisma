@@ -76,6 +76,11 @@ model Hearing {
   meeting       Meeting        @relation(fields: [meetingId], references: [id])
   hearingNumber Int
   state         HearingState   @default(PENDING)
+  // From the case-management system's daily feed (services/cmsImport.ts) —
+  // when this hearing was scheduled for, not when it actually ran (that's
+  // HearingPeriod). Null for hearings created by other means (routes/
+  // hearings.ts, routes/provision.ts without a date).
+  scheduledAt   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -135,18 +140,28 @@ model HearingPeriod {
   @@index([hearingId])
 }
 
+// A person can have more than one known email (a work alias, a personal
+// M365 account) — every one of them counts for roster/attendance matching
+// (statusDerivation.ts checks membership across the whole array, not just
+// one field), so joining Teams with any of them counts as present.
+// externalUid is the case-management system's PersonUID (services/
+// cmsImport.ts) — nullable because a party added by hand (routes/
+// parties.ts) or by routes/provision.ts without one has no such identity;
+// when present, it's what re-imports match against (see @@unique below)
+// rather than name/email, which can legitimately change between imports.
 model ExpectedParty {
-  id        String    @id @default(cuid())
-  hearingId String
-  hearing   Hearing   @relation(fields: [hearingId], references: [id])
-  name      String
-  email     String
-  role      PartyRole @default(PARTY)
+  id          String    @id @default(cuid())
+  hearingId   String
+  hearing     Hearing   @relation(fields: [hearingId], references: [id])
+  name        String
+  emails      String[]
+  role        PartyRole @default(PARTY)
+  externalUid String?
 
   remapsTargeting RemapMapping[]
 
+  @@unique([hearingId, externalUid])
   @@index([hearingId])
-  @@index([email])
 }
 
 // Live roster, fed exclusively by bot roster events (join/leave). Source of
@@ -186,16 +201,20 @@ model RemapMapping {
 
 // Scoped per meeting: a judge presides over one meeting at a time, and the
 // same person may be a JUDGE in one meeting and, say, SECRETARY in another
-// on a different day.
+// on a different day. emails/externalUid follow the same reasoning as
+// ExpectedParty above — every known email counts for presence matching,
+// and externalUid (the CMS's PersonUID, when known) is what re-imports
+// match against.
 model JudgeOrAuxiliary {
-  id        String    @id @default(cuid())
-  meetingId String
-  meeting   Meeting   @relation(fields: [meetingId], references: [id])
-  email     String
-  name      String
-  role      JudgeRole
+  id          String    @id @default(cuid())
+  meetingId   String
+  meeting     Meeting   @relation(fields: [meetingId], references: [id])
+  emails      String[]
+  name        String
+  role        JudgeRole
+  externalUid String?
 
-  @@unique([meetingId, email])
+  @@unique([meetingId, externalUid])
   @@index([meetingId])
 }
 

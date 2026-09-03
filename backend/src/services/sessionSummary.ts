@@ -94,9 +94,14 @@ export async function sendSessionSummaries(meetingId: string, endedByEmail: stri
 
   const recipients: string[] = [];
   for (const judge of judges) {
+    // A judge's HearingNote may be authored under ANY of their known
+    // emails — whichever one Teams SSO resolved as their actorEmail at
+    // the time they typed it (auth/verifyTeamsToken.ts), not necessarily
+    // their first/primary listed email — so match against the whole set.
+    const judgeEmails = new Set(judge.emails.map((e) => e.toLowerCase()));
     const sections = bases.map((b) => {
       const myNote = notes.find(
-        (n) => n.hearingId === b.hearingId && n.authorEmail === judge.email,
+        (n) => n.hearingId === b.hearingId && judgeEmails.has(n.authorEmail.toLowerCase()),
       );
       const presentLine = b.presentEmails.length ? b.presentEmails.join(", ") : "(none)";
       return (
@@ -111,8 +116,9 @@ export async function sendSessionSummaries(meetingId: string, endedByEmail: stri
         ? "Session ended — no hearings were tracked in this meeting."
         : `Session summary\n\n${sections.join("\n\n")}`;
 
-    await sendChatMessage(judge.email, "system:session-summary", text);
-    recipients.push(judge.email);
+    const primaryEmail = judge.emails[0];
+    await sendChatMessage(primaryEmail, "system:session-summary", text);
+    recipients.push(primaryEmail);
   }
 
   await logAudit({

@@ -15,10 +15,12 @@ import { notesRouter } from "./routes/notes";
 import { grantsRouter } from "./routes/grants";
 import { participantsRouter } from "./routes/participants";
 import { sessionRouter } from "./routes/session";
+import { adminRouter } from "./routes/admin";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
 import { requireTeamsUser } from "./auth/verifyTeamsToken";
+import { startDailyImportScheduler } from "./services/dailyImportScheduler";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 3978);
@@ -65,6 +67,10 @@ app.post("/api/messages/teams", async (req, res) => {
 // exact path and nothing app.use's prefix-matching might otherwise catch).
 app.use("/api/meetings/:meetingId/provision", provisionRouter);
 
+// Admin/ops endpoint (manual daily-import trigger) — same reasoning as
+// provisioning above, and NOT meeting-scoped (see routes/admin.ts).
+app.use("/api/admin", adminRouter);
+
 // Everything else requires a validated Teams-SSO token (or AUTH_MODE=
 // dev-bypass locally) — this is what turns req.actorEmail from "whatever
 // header the client felt like sending" into something the audit log can
@@ -99,6 +105,7 @@ app.use("/api/meetings/:meetingId", meetingsRouter);
 
 const httpServer = http.createServer(app);
 initWs(httpServer, TAB_ORIGIN);
+startDailyImportScheduler();
 
 httpServer.listen(PORT, () => {
   console.log(`Hearing Manager backend listening on :${PORT}`);

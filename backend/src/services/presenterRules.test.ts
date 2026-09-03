@@ -5,7 +5,7 @@ describe("computePresenterEmails", () => {
   it("promotes connected judges/auxiliaries regardless of any active hearing", () => {
     const result = computePresenterEmails({
       connectedEmails: ["judge1@court.gov", "secretary@court.gov"],
-      judges: [{ email: "judge1@court.gov" }, { email: "secretary@court.gov" }],
+      judges: [{ emails: ["judge1@court.gov"] }, { emails: ["secretary@court.gov"] }],
       activeHearingPresentEmails: [],
       activeGrants: [],
     });
@@ -15,7 +15,7 @@ describe("computePresenterEmails", () => {
   it("never promotes a judge who isn't currently connected", () => {
     const result = computePresenterEmails({
       connectedEmails: ["judge1@court.gov"],
-      judges: [{ email: "judge1@court.gov" }, { email: "offline-judge@court.gov" }],
+      judges: [{ emails: ["judge1@court.gov"] }, { emails: ["offline-judge@court.gov"] }],
       activeHearingPresentEmails: [],
       activeGrants: [],
     });
@@ -65,10 +65,21 @@ describe("computePresenterEmails", () => {
     expect(result.has("observer.press@outlook.com")).toBe(false);
   });
 
+  it("promotes a judge who joined with a secondary (non-primary) email", () => {
+    const result = computePresenterEmails({
+      connectedEmails: ["alternative@judge.com"],
+      judges: [{ emails: ["primary@judge.com", "alternative@judge.com"] }],
+      activeHearingPresentEmails: [],
+      activeGrants: [],
+    });
+    expect(result.has("alternative@judge.com")).toBe(true);
+    expect(result.has("primary@judge.com")).toBe(false);
+  });
+
   it("is case-insensitive across all three sources", () => {
     const result = computePresenterEmails({
       connectedEmails: ["Judge1@Court.gov"],
-      judges: [{ email: "judge1@COURT.GOV" }],
+      judges: [{ emails: ["judge1@COURT.GOV"] }],
       activeHearingPresentEmails: [],
       activeGrants: [],
     });

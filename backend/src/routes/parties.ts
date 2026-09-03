@@ -3,6 +3,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { broadcastState } from "../ws";
 import { logAudit } from "../services/auditLog";
+import { externalUidOrSynthetic } from "../util/identity";
 import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
 // mergeParams: mounted under /api/meetings/:meetingId (index.ts).
@@ -10,12 +11,16 @@ export const partiesRouter = Router({ mergeParams: true });
 
 partiesRouter.post("/", async (req, res) => {
   const meetingId = meetingIdParam(req);
-  const { hearingId, name, email, role } = req.body as {
+  const { hearingId, name, emails, role, externalUid } = req.body as {
     hearingId: string;
     name: string;
-    email: string;
+    emails: string[];
     role?: "PARTY" | "COUNSEL" | "WITNESS" | "OTHER";
+    externalUid?: string;
   };
+  if (!emails?.length) {
+    return res.status(400).json({ error: "emails must be a non-empty array" });
+  }
 
   // Confirm the hearing this party is being attached to actually belongs
   // to this meeting — without this check, a valid Teams-SSO user in
@@ -26,8 +31,15 @@ partiesRouter.post("/", async (req, res) => {
     return res.status(404).json({ error: "hearing not found in this meeting" });
   }
 
-  const party = await prisma.expectedParty.create({
-    data: { hearingId, name, email: email.toLowerCase(), role: role ?? "PARTY" },
+  const normalizedEmails = emails.map((e) => e.toLowerCase());
+  const uid = externalUidOrSynthetic(externalUid, normalizedEmails[0]);
+  // upsert, not create: re-posting the same person (same hearingId +
+  // externalUid) updates them instead of hitting the unique constraint —
+  // same reasoning as routes/judges.ts.
+  const party = await prisma.expectedParty.upsert({
+    where: { hearingId_externalUid: { hearingId, externalUid: uid } },
+    create: { hearingId, name, emails: normalizedEmails, role: role ?? "PARTY", externalUid: uid },
+    update: { name, emails: normalizedEmails, role: role ?? "PARTY" },
   });
   await logAudit({
     meetingId,

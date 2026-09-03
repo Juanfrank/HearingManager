@@ -12,7 +12,10 @@ export type DerivedAttendanceStatus = "ready" | "incomplete" | "no_show";
 
 export interface ExpectedPartyLike {
   id: string;
-  email: string;
+  // A person can have more than one known email (docs/README.md,
+  // "Provisioning" / case-management import) — joining Teams with ANY of
+  // them counts as present, not just the first.
+  emails: string[];
 }
 
 export interface RosterEntryLike {
@@ -28,6 +31,8 @@ export interface RemapMappingLike {
 
 export interface PartyPresence {
   expectedPartyId: string;
+  // Display/messaging email — the first of the party's known emails.
+  // present is computed against ALL of them, not just this one.
   email: string;
   present: boolean;
 }
@@ -80,8 +85,8 @@ export function deriveHearingAttendance(
 
   const parties: PartyPresence[] = expectedParties.map((p) => ({
     expectedPartyId: p.id,
-    email: p.email,
-    present: connected.has(norm(p.email)),
+    email: p.emails[0] ?? "",
+    present: p.emails.some((e) => connected.has(norm(e))),
   }));
 
   const presentCount = parties.filter((p) => p.present).length;
@@ -108,7 +113,9 @@ export function generalPublicEntries(
   allExpectedParties: ExpectedPartyLike[],
   remaps: RemapMappingLike[],
 ): RosterEntryLike[] {
-  const expectedEmails = new Set(allExpectedParties.map((p) => norm(p.email)));
+  const expectedEmails = new Set(
+    allExpectedParties.flatMap((p) => p.emails.map(norm)),
+  );
   const activeRemapEmails = new Set(
     remaps.filter((m) => !m.undoneAt).map((m) => norm(m.rosterEmail)),
   );

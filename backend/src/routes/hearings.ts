@@ -9,6 +9,7 @@ import {
   reactivateHearing,
 } from "../graph/roleManager";
 import { buildStateSnapshot } from "../services/stateSnapshot";
+import { externalUidOrSynthetic } from "../util/identity";
 import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
 // mergeParams: mounted under /api/meetings/:meetingId (index.ts).
@@ -30,18 +31,22 @@ hearingsRouter.post("/", async (req, res) => {
   const meetingId = meetingIdParam(req);
   const { hearingNumber, expectedParties } = req.body as {
     hearingNumber: number;
-    expectedParties?: { name: string; email: string; role?: string }[];
+    expectedParties?: { name: string; emails: string[]; role?: string; externalUid?: string }[];
   };
   const hearing = await prisma.hearing.create({
     data: {
       meetingId,
       hearingNumber,
       expectedParties: {
-        create: (expectedParties ?? []).map((p) => ({
-          name: p.name,
-          email: p.email.toLowerCase(),
-          role: (p.role as any) ?? "PARTY",
-        })),
+        create: (expectedParties ?? []).map((p) => {
+          const normalizedEmails = p.emails.map((e) => e.toLowerCase());
+          return {
+            name: p.name,
+            emails: normalizedEmails,
+            role: (p.role as any) ?? "PARTY",
+            externalUid: externalUidOrSynthetic(p.externalUid, normalizedEmails[0]),
+          };
+        }),
       },
     },
     include: { expectedParties: true },

@@ -78,9 +78,13 @@ Complete will PATCH the correct meeting.
 
 The tab is a **management dashboard for hearing data that already
 exists** — it has no "add a judge" or "create a hearing" screen. Per §1's
-own premise ("initial roles... assigned by another system"), that data is
-expected to come from the court's case-management system ahead of the
-hearing day, via:
+own premise ("initial roles... assigned by another system"), that data
+comes from the court's case-management system (the "CMS"), one of two
+ways: the CMS pushes it to us on demand (this section), or we pull it from
+the CMS on a daily schedule (next section, "Daily case-management
+import"). Both end up calling the same underlying upsert
+(`backend/src/services/importHearingData.ts`), so they share every
+idempotency rule below.
 
 ```
 POST /api/meetings/:meetingId/provision
@@ -88,10 +92,10 @@ Header: X-Api-Key: <one of PROVISIONING_API_KEYS>
 Body: {
   "organizerUserId"?: string,
   "onlineMeetingId"?: string,
-  "judges"?: [{ "email": string, "name": string,
+  "judges"?: [{ "emails": string[], "name": string, "externalUid"?: string,
                 "role": "JUDGE" | "PRESIDING_JUDGE" | "SECRETARY" | "OTHER_OFFICER" }],
   "hearings"?: [{ "hearingNumber": number,
-                  "expectedParties"?: [{ "name": string, "email": string,
+                  "expectedParties"?: [{ "name": string, "emails": string[], "externalUid"?: string,
                                           "role"?: "PARTY" | "COUNSEL" | "WITNESS" | "OTHER" }] }]
 }
 ```
@@ -100,8 +104,10 @@ Body: {
 `backend/src/auth/requireProvisioningKey.ts` — a separate, simpler
 mechanism from Teams SSO, since the caller here is a server, not a
 signed-in Teams user; comma-separated `PROVISIONING_API_KEYS` in
-`backend/.env` for key rotation.) Judges are upserted (safe to re-run with
-an updated roster); hearings are create-only — a `hearingNumber` that
+`backend/.env` for key rotation.) Judges are upserted, matched by
+`externalUid` (falls back to a synthetic key derived from their first
+email if omitted — `backend/src/util/identity.ts` — so a manual re-post is
+still idempotent). Hearings are create-only — a `hearingNumber` that
 already exists in the meeting is **skipped**, reported back in the
 response's `hearingsSkipped`, rather than overwritten, because an existing
 hearing's `ExpectedParty` rows may already be referenced by a
@@ -113,14 +119,89 @@ curl -X POST https://<backend>/api/meetings/<meetingId>/provision \
   -d '{"judges": [...], "hearings": [...]}'
 ```
 
-`PROVISIONING_API_KEYS` unset (the default) disables the endpoint (503) —
-this app doesn't currently integrate with any real case-management system,
-so there's nothing to point it at yet; set it once there is. Separately,
-`POST /api/meetings/:meetingId/register` (`routes/meetings.ts`) is a
-lighter-weight Teams-SSO-authenticated endpoint the tab itself calls on
-startup — it only creates the bare `Meeting` row so hearings can exist
+`PROVISIONING_API_KEYS` unset (the default) disables the endpoint (503).
+Separately, `POST /api/meetings/:meetingId/register` (`routes/meetings.ts`)
+is a lighter-weight Teams-SSO-authenticated endpoint the tab itself calls
+on startup — it only creates the bare `Meeting` row so hearings can exist
 before any roster event has happened; it is not how judges/hearings get
 populated.
+
+### Multi-email matching
+
+A person can have more than one known email (a work alias, a personal
+M365 account) — `JudgeOrAuxiliary.emails` / `ExpectedParty.emails` are
+arrays, not a single field, and **joining Teams with ANY of them counts as
+present/connected**, not just the first
+(`backend/src/services/statusDerivation.ts`,
+`services/presenterRules.ts`). This matters for the Graph role PATCH too:
+`graph/roleManager.ts` promotes whichever literal email they actually
+connected with, not their "primary" one — a judge who normally shows up as
+`judge@court.gov` but joins one day as `alternative@court.gov` still gets
+presenter rights. The first email in the array is used only for display
+and as the messaging/mute/camera-off target
+(`PartyPresence.email`/`JudgeView.email` in the API — see
+`services/stateSnapshot.ts`).
+
+## Daily case-management import (pull)
+
+The backend also PULLS from the CMS on a schedule, rather than waiting for
+it to push — `backend/src/services/dailyImportScheduler.ts` fires once a
+day (`DAILY_IMPORT_HOUR`, server-local time) and fetches **tomorrow's**
+hearings:
+
+```
+GET {CMS_BASE_URL}/hearings?date=YYYY-MM-DD
+Authorization: Bearer {CMS_API_KEY}
+```
+
+expecting rows shaped like:
+
+```
+MeetingID, Date, Time, HearingNumber, PersonUID, PersonRole, PersonName, Email
+```
+
+where `Email` may be a single string (one row per email — duplicate rows
+sharing the same `PersonUID`+`PersonRole` are expected and collapsed) or a
+JSON array (no duplication needed) — `backend/src/services/cmsImport.ts`'s
+`parseCmsRows()` handles either shape, grouping flat rows into one person
+per `(PersonUID, PersonRole)` pair with every email collected. A person
+mapped to a judge role becomes meeting-scoped (matches
+`JudgeOrAuxiliary`); mapped to a party role, hearing-scoped under that row's
+`HearingNumber`. The **MeetingID from the CMS is used directly as this
+app's `Meeting.id`** (the same primary key the bot/tab already use, per
+docs "Multi-meeting" above) — assumed to be the same identifier Teams
+itself will report for that meeting, not a separate scheduling ID needing
+reconciliation.
+
+**Role vocabulary is a seeded guess, not confirmed.** `CMS_ROLE_MAPPING`
+(`services/cmsImport.ts`) maps `PersonRole` strings (`"Judge"`, `"Party"`,
+`"Counsel"`, etc.) to our `JudgeRole`/`PartyRole` enums — it's one flat,
+easy-to-extend table; add a key the moment real CMS data shows a role
+string that isn't there yet. An unmapped role logs a warning and falls
+back to party/`OTHER` (never judge, since that would wrongly hand out
+presenter rights to someone of unconfirmed role) rather than silently
+dropping the person.
+
+`CMS_MODE=mock` (the default) returns a small built-in sample instead of
+calling a real system — `backend/src/services/cmsClient.ts` — so the whole
+fetch → parse → upsert pipeline is exercisable today. Set
+`CMS_BASE_URL`/`CMS_API_KEY` and `CMS_MODE=real` once there's an actual
+system to point at; if it doesn't use simple Bearer-token auth, adjust
+`cmsClient.ts`'s `fetchHearingsForDate()`.
+
+`POST /api/admin/run-daily-import` (`routes/admin.ts`, guarded by the same
+`requireProvisioningKey`/`PROVISIONING_API_KEYS` as provisioning — this is
+another server-to-server action, not a Teams user one) fires the exact
+same import immediately, for ops/testing, without waiting for the
+scheduled hour:
+
+```
+curl -X POST https://<backend>/api/admin/run-daily-import -H 'X-Api-Key: <key>'
+```
+
+Each meeting in a day's feed is imported independently — one meeting's bad
+data doesn't block the rest, and failures come back per-meeting in the
+response's `errors`.
 
 ## Azure / Entra ID prerequisites (manual — cannot be done in code)
 

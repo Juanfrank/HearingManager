@@ -76,7 +76,11 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
   );
   const judgeViews = judges.map((j) => ({
     ...j,
-    connected: connectedEmails.has(j.email.toLowerCase()),
+    // Display/messaging email — the first of their known emails; presence
+    // is checked against all of them, not just this one (docs/README.md,
+    // "Multi-email matching").
+    email: j.emails[0] ?? "",
+    connected: j.emails.some((e) => connectedEmails.has(e.toLowerCase())),
   }));
 
   const generalPublic = generalPublicEntries(
