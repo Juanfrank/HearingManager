@@ -46,5 +46,15 @@
   "webApplicationInfo": {
     "id": "00000000-0000-0000-0000-000000000000",
     "resource": "api://changeme.example.com/00000000-0000-0000-0000-000000000000"
+  },
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "MeetingStage.Write.Chat",
+          "type": "Delegated"
+        }
+      ]
+    }
   }
 }

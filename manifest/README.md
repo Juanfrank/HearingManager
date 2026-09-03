@@ -56,6 +56,18 @@ switch: replace the `staticTabs` block in `manifest.json` with:
 ]
 ```
 
+## RSC permission: MeetingStage.Write.Chat
+
+`authorization.permissions.resourceSpecific` declares
+`MeetingStage.Write.Chat` (Delegated), required to call the Teams JS SDK's
+`meeting.shareAppContentToStage` API — e.g. for a "put this hearing on
+stage for everyone" action from the tab. **Not yet called anywhere in
+`tab/src`** — the permission is declared but unused until that UI/call is
+added. Resource-specific consent (RSC) permissions are granted per meeting
+by the meeting organizer at install time, not by a tenant-wide admin
+consent flow, but sideloading still needs the tenant admin approval in
+`docs/README.md` §3 regardless.
+
 ## Packaging
 
 Zip `manifest.json` + the two icon PNGs (flat, no subfolder) into
