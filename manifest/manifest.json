@@ -22,10 +22,12 @@
     "color": "color.png"
   },
   "accentColor": "#1F2328",
-  "configurableTabs": [
+  "staticTabs": [
     {
-      "configurationUrl": "https://<TAB_HOSTNAME>/config",
-      "canUpdateConfiguration": false,
+      "entityId": "hearing-manager",
+      "name": "Hearing Manager",
+      "contentUrl": "https://<TAB_HOSTNAME>/",
+      "websiteUrl": "https://<TAB_HOSTNAME>/",
       "scopes": ["groupChat", "team"],
       "context": ["meetingSidePanel", "meetingStage"]
     }
