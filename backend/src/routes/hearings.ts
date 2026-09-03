@@ -57,27 +57,9 @@ hearingsRouter.post("/", async (req, res) => {
   res.status(201).json(hearing);
 });
 
-hearingsRouter.patch("/:id/notes", async (req, res) => {
-  const meetingId = meetingIdParam(req);
-  const { notes } = req.body as { notes: string };
-  const before = await prisma.hearing.findFirstOrThrow({
-    where: { id: req.params.id, meetingId },
-  });
-  const hearing = await prisma.hearing.update({
-    where: { id: req.params.id },
-    data: { notes },
-  });
-  await logAudit({
-    meetingId,
-    hearingId: hearing.id,
-    actorEmail: actorEmail(req),
-    action: "hearing.notes.update",
-    before: { notes: before.notes },
-    after: { notes: hearing.notes },
-  });
-  await broadcastState(meetingId);
-  res.json(hearing);
-});
+// Notes are now personal/per-author — see routes/notes.ts
+// (GET /notes, PUT /hearings/:id/notes), mounted separately in index.ts.
+// The old shared PATCH /:id/notes route that lived here is gone.
 
 hearingsRouter.post("/:id/activate", async (req, res) => {
   const meetingId = meetingIdParam(req);
@@ -86,7 +68,10 @@ hearingsRouter.post("/:id/activate", async (req, res) => {
     await broadcastState(meetingId);
     res.json({ ok: true, periodId: period.id });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    // "already active" is a real client-facing conflict, not a server
+    // failure — surface it as 409 so the tab can show it as such.
+    const message = (err as Error).message;
+    res.status(message.includes("already active") ? 409 : 500).json({ error: message });
   }
 });
 
@@ -97,7 +82,10 @@ hearingsRouter.post("/:id/complete", async (req, res) => {
     await broadcastState(meetingId);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    // "already active" is a real client-facing conflict, not a server
+    // failure — surface it as 409 so the tab can show it as such.
+    const message = (err as Error).message;
+    res.status(message.includes("already active") ? 409 : 500).json({ error: message });
   }
 });
 
@@ -108,6 +96,9 @@ hearingsRouter.post("/:id/reactivate", async (req, res) => {
     await broadcastState(meetingId);
     res.json({ ok: true, periodId: period.id });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    // "already active" is a real client-facing conflict, not a server
+    // failure — surface it as 409 so the tab can show it as such.
+    const message = (err as Error).message;
+    res.status(message.includes("already active") ? 409 : 500).json({ error: message });
   }
 });

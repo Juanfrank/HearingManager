@@ -17,6 +17,8 @@ CREATE TABLE "Meeting" (
     "onlineMeetingId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "endedAt" TIMESTAMP(3),
+    "endedBy" TEXT,
 
     CONSTRAINT "Meeting_pkey" PRIMARY KEY ("id")
 );
@@ -27,11 +29,34 @@ CREATE TABLE "Hearing" (
     "meetingId" TEXT NOT NULL,
     "hearingNumber" INTEGER NOT NULL,
     "state" "HearingState" NOT NULL DEFAULT 'PENDING',
-    "notes" TEXT NOT NULL DEFAULT '',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Hearing_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "HearingNote" (
+    "id" TEXT NOT NULL,
+    "hearingId" TEXT NOT NULL,
+    "authorEmail" TEXT NOT NULL,
+    "text" TEXT NOT NULL DEFAULT '',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "HearingNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PresenterGrant" (
+    "id" TEXT NOT NULL,
+    "meetingId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "grantedBy" TEXT NOT NULL,
+    "grantedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revokedAt" TIMESTAMP(3),
+    "revokedBy" TEXT,
+
+    CONSTRAINT "PresenterGrant_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -115,6 +140,15 @@ CREATE INDEX "Hearing_meetingId_idx" ON "Hearing"("meetingId");
 CREATE UNIQUE INDEX "Hearing_meetingId_hearingNumber_key" ON "Hearing"("meetingId", "hearingNumber");
 
 -- CreateIndex
+CREATE INDEX "HearingNote_hearingId_idx" ON "HearingNote"("hearingId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "HearingNote_hearingId_authorEmail_key" ON "HearingNote"("hearingId", "authorEmail");
+
+-- CreateIndex
+CREATE INDEX "PresenterGrant_meetingId_idx" ON "PresenterGrant"("meetingId");
+
+-- CreateIndex
 CREATE INDEX "HearingPeriod_hearingId_idx" ON "HearingPeriod"("hearingId");
 
 -- CreateIndex
@@ -152,6 +186,12 @@ CREATE INDEX "AuditLogEntry_createdAt_idx" ON "AuditLogEntry"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "Hearing" ADD CONSTRAINT "Hearing_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "Meeting"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HearingNote" ADD CONSTRAINT "HearingNote_hearingId_fkey" FOREIGN KEY ("hearingId") REFERENCES "Hearing"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PresenterGrant" ADD CONSTRAINT "PresenterGrant_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "Meeting"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "HearingPeriod" ADD CONSTRAINT "HearingPeriod_hearingId_fkey" FOREIGN KEY ("hearingId") REFERENCES "Hearing"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

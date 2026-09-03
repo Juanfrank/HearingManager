@@ -103,6 +103,49 @@ export async function patchMeetingRoles(
 }
 
 /**
+ * Force-mute / force-camera-off for a SPECIFIC currently-connected
+ * participant, right now. This is NOT the same lever as patchMeetingRoles
+ * above — the role PATCH only grants/revokes the *ability* to unmute
+ * yourself going forward (an attendee can't self-unmute per Teams' default
+ * meeting option), it can't instantly cut off someone who's already
+ * unmuted. Actually forcing that requires Microsoft's real-time Cloud
+ * Communications / Calls API (a registered calling bot, Calls.AccessMedia.
+ * All) — the SAME real-time-media prerequisite docs/README.md already
+ * defers to Phase 2 for the Calling feature. So these two calls are mocked
+ * under GRAPH_MODE=mock (like everything else here) and throw in real
+ * mode with a comment rather than silently doing nothing — implement them
+ * once that Phase 2 prerequisite is actually in place.
+ */
+export async function muteParticipant(
+  meetingId: string,
+  participantEmail: string,
+): Promise<{ ok: true; mocked: boolean }> {
+  if (GRAPH_MODE === "mock") {
+    console.log(`[graph:mock] mute participant ${participantEmail} in meeting ${meetingId}`);
+    return { ok: true, mocked: true };
+  }
+  throw new Error(
+    "muteParticipant() requires the Cloud Communications/Calls API (Phase 2, see docs/README.md) — not implemented",
+  );
+}
+
+export async function setParticipantCamera(
+  meetingId: string,
+  participantEmail: string,
+  enabled: boolean,
+): Promise<{ ok: true; mocked: boolean }> {
+  if (GRAPH_MODE === "mock") {
+    console.log(
+      `[graph:mock] set camera ${enabled ? "on" : "off"} for ${participantEmail} in meeting ${meetingId}`,
+    );
+    return { ok: true, mocked: true };
+  }
+  throw new Error(
+    "setParticipantCamera() requires the Cloud Communications/Calls API (Phase 2, see docs/README.md) — not implemented",
+  );
+}
+
+/**
  * POST /chats/{chat-id}/messages (creating the chat first via
  * POST /users/{id}/chats if none exists yet). docs §5.6.
  */

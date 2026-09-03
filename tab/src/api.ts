@@ -61,8 +61,6 @@ export const api = {
   activateHearing: (id: string) => request(`/hearings/${id}/activate`, { method: "POST" }),
   completeHearing: (id: string) => request(`/hearings/${id}/complete`, { method: "POST" }),
   reactivateHearing: (id: string) => request(`/hearings/${id}/reactivate`, { method: "POST" }),
-  updateNotes: (id: string, notes: string) =>
-    request(`/hearings/${id}/notes`, { method: "PATCH", body: JSON.stringify({ notes }) }),
   createRemap: (payload: {
     rosterEmail: string;
     hearingId: string;
@@ -74,4 +72,30 @@ export const api = {
     request("/messages", { method: "POST", body: JSON.stringify({ toEmail, text }) }),
   simulateRosterEvent: (email: string, displayName: string, type: "joined" | "left") =>
     request("/roster/event", { method: "POST", body: JSON.stringify({ email, displayName, type }) }),
+
+  /** Personal, per-author notes — see backend/src/routes/notes.ts. */
+  getMyNotes: (): Promise<Record<string, string>> => request("/notes"),
+  updateMyNotes: (hearingId: string, text: string) =>
+    request(`/hearings/${hearingId}/notes`, { method: "PUT", body: JSON.stringify({ text }) }),
+
+  /** Ad-hoc presenter (mic/camera) access — backend/src/routes/grants.ts. */
+  grantPresenter: (email: string) =>
+    request("/grants", { method: "POST", body: JSON.stringify({ email }) }),
+  revokeGrant: (grantId: string) => request(`/grants/${grantId}/revoke`, { method: "POST" }),
+
+  /**
+   * One-shot, mocked (GRAPH_MODE=mock) mute/camera-off — see
+   * backend/src/routes/participants.ts and graph/client.ts for why real
+   * mode isn't implemented yet (needs the Phase-2 Calls API).
+   */
+  muteParticipant: (email: string) =>
+    request(`/participants/${encodeURIComponent(email)}/mute`, { method: "POST" }),
+  setParticipantCamera: (email: string, enabled: boolean) =>
+    request(`/participants/${encodeURIComponent(email)}/camera`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
+
+  /** Sends every judge/auxiliary a closure summary — backend/src/routes/session.ts. */
+  endSession: () => request("/end-session", { method: "POST" }),
 };

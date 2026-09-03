@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { deriveHearingAttendance } from "../services/statusDerivation";
+import { computePresenterEmails } from "../services/presenterRules";
 import { patchMeetingRoles, type AttendeeRole } from "./client";
 import { logAudit } from "../services/auditLog";
 
@@ -19,53 +20,74 @@ async function resolveGraphMeetingRef(meetingId: string) {
 }
 
 /**
- * Builds the FULL authoritative attendee-role map for one Meeting: every
- * currently-connected participant across every hearing IN THAT MEETING,
- * with the ACTIVE hearing's connected (incl. remapped) members promoted to
- * presenter and everyone else left as attendee. Rebuilding this from
- * scratch every time — rather than tracking a partial diff — is what keeps
- * the "never a partial diff" guarantee in docs §5.2 easy to reason about.
- * Scoping by meetingId is what keeps two concurrent meetings' role maps
- * from ever being computed from each other's roster.
+ * Builds the FULL authoritative attendee-role map for one Meeting and
+ * PATCHes it. Presenter eligibility itself is computed by the pure,
+ * unit-tested computePresenterEmails() (services/presenterRules.ts) —
+ * connected judges/auxiliaries always, the active hearing's present
+ * parties, and anyone with an active PresenterGrant. Rebuilding the whole
+ * map from scratch every time — rather than tracking a partial diff — is
+ * what keeps the "never a partial diff" guarantee in docs §5.2 easy to
+ * reason about. Scoping every query by meetingId is what keeps two
+ * concurrent meetings' role maps from ever being computed from each
+ * other's roster.
  */
-async function buildFullAttendeeRoleMap(
-  meetingId: string,
-  presenterHearingId: string | null,
-): Promise<AttendeeRole[]> {
-  const [roster, hearings, remaps] = await Promise.all([
+async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole[]> {
+  const [roster, judges, activeHearing, grants] = await Promise.all([
     prisma.rosterEntry.findMany({ where: { meetingId, isConnected: true } }),
-    prisma.hearing.findMany({ where: { meetingId }, include: { expectedParties: true } }),
-    prisma.remapMapping.findMany({ where: { undoneAt: null, hearing: { meetingId } } }),
+    prisma.judgeOrAuxiliary.findMany({ where: { meetingId } }),
+    prisma.hearing.findFirst({
+      where: { meetingId, state: "ACTIVE" },
+      include: { expectedParties: true },
+    }),
+    prisma.presenterGrant.findMany({ where: { meetingId, revokedAt: null } }),
   ]);
 
-  const presenterEmails = new Set<string>();
-  if (presenterHearingId) {
-    const activeHearing = hearings.find((h) => h.id === presenterHearingId);
-    if (activeHearing) {
-      const attendance = deriveHearingAttendance(
-        activeHearing.id,
-        activeHearing.expectedParties,
-        roster,
-        remaps,
-      );
-      for (const p of attendance.parties) {
-        if (p.present) presenterEmails.add(p.email.toLowerCase());
-      }
-      // Remapped-in roster entries that are connected also get promoted,
-      // even if the remap target hasn't been reflected as an ExpectedParty
-      // row (e.g. mapped_to_type = new_party without a persisted party yet).
-      for (const m of remaps) {
-        if (m.hearingId === activeHearing.id) {
-          presenterEmails.add(m.rosterEmail.toLowerCase());
-        }
-      }
+  let activeHearingPresentEmails: string[] = [];
+  if (activeHearing) {
+    const remaps = await prisma.remapMapping.findMany({
+      where: { hearingId: activeHearing.id, undoneAt: null },
+    });
+    const attendance = deriveHearingAttendance(
+      activeHearing.id,
+      activeHearing.expectedParties,
+      roster,
+      remaps,
+    );
+    activeHearingPresentEmails = attendance.parties.filter((p) => p.present).map((p) => p.email);
+    // Remapped-in roster entries that are connected also get promoted,
+    // even if the remap target hasn't been reflected as an ExpectedParty
+    // row (e.g. mapped_to_type = new_party without a persisted party yet).
+    for (const m of remaps) {
+      activeHearingPresentEmails.push(m.rosterEmail);
     }
   }
+
+  const presenterEmails = computePresenterEmails({
+    connectedEmails: roster.map((r) => r.email),
+    judges,
+    activeHearingPresentEmails,
+    activeGrants: grants,
+  });
 
   return roster.map((r) => ({
     email: r.email,
     role: presenterEmails.has(r.email.toLowerCase()) ? "presenter" : "attendee",
   }));
+}
+
+/**
+ * Recomputes and re-PATCHes the full role map for a meeting's CURRENT
+ * state (whichever hearing is active, if any, plus current roster/grants)
+ * — the one place role sync happens. Call this after anything that could
+ * change who should be presenter: activate/complete/reactivate (below), a
+ * roster join/leave (routes/roster.ts, bot/index.ts), or a grant/revoke
+ * (routes/grants.ts).
+ */
+export async function syncMeetingRoles(meetingId: string): Promise<AttendeeRole[]> {
+  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
+  const fullMap = await buildFullAttendeeRoleMap(meetingId);
+  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
+  return fullMap;
 }
 
 export async function activateHearing(
@@ -76,16 +98,27 @@ export async function activateHearing(
   const hearing = await prisma.hearing.findFirstOrThrow({
     where: { id: hearingId, meetingId },
   });
-  const before = { state: hearing.state };
 
-  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
-  const fullMap = await buildFullAttendeeRoleMap(meetingId, hearingId);
-  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
+  // Only one hearing can be presenter-active at a time (docs/README.md —
+  // the spotlight UI and the role map both assume this). Block rather than
+  // silently demoting whatever's currently active.
+  const alreadyActive = await prisma.hearing.findFirst({
+    where: { meetingId, state: "ACTIVE", NOT: { id: hearingId } },
+  });
+  if (alreadyActive) {
+    throw new Error(
+      `Hearing #${alreadyActive.hearingNumber} is already active — complete or deactivate it before activating another hearing.`,
+    );
+  }
+
+  const before = { state: hearing.state };
 
   const [, period] = await prisma.$transaction([
     prisma.hearing.update({ where: { id: hearingId }, data: { state: "ACTIVE" } }),
     prisma.hearingPeriod.create({ data: { hearingId } }),
   ]);
+
+  const fullMap = await syncMeetingRoles(meetingId);
 
   await logAudit({
     meetingId,
@@ -106,13 +139,25 @@ export async function completeHearing(
 ) {
   const hearing = await prisma.hearing.findFirstOrThrow({
     where: { id: hearingId, meetingId },
+    include: { expectedParties: true },
   });
   const before = { state: hearing.state };
 
-  // Demote everyone back to attendee (no hearing is presenter now).
-  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
-  const fullMap = await buildFullAttendeeRoleMap(meetingId, null);
-  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
+  // Snapshot attendance AT CLOSURE into the audit entry — the session
+  // summary (services/sessionSummary.ts) reads this back later rather than
+  // recomputing live attendance, which can drift as people leave the call
+  // after the hearing itself has already closed. Consistent with "this
+  // data may need to hold up as a record" (docs/README.md §7).
+  const [roster, remaps] = await Promise.all([
+    prisma.rosterEntry.findMany({ where: { meetingId } }),
+    prisma.remapMapping.findMany({ where: { hearingId, undoneAt: null } }),
+  ]);
+  const attendanceAtClose = deriveHearingAttendance(
+    hearingId,
+    hearing.expectedParties,
+    roster,
+    remaps,
+  );
 
   const openPeriod = await prisma.hearingPeriod.findFirst({
     where: { hearingId, endedAt: null },
@@ -126,13 +171,21 @@ export async function completeHearing(
   }
   await prisma.hearing.update({ where: { id: hearingId }, data: { state: "COMPLETED" } });
 
+  // No hearing is active any more now — demote everyone back to attendee
+  // except judges/auxiliaries and anyone with a standing grant.
+  await syncMeetingRoles(meetingId);
+
   await logAudit({
     meetingId,
     hearingId,
     actorEmail,
     action: "hearing.complete",
     before,
-    after: { state: "COMPLETED", closedPeriodId: openPeriod?.id ?? null },
+    after: {
+      state: "COMPLETED",
+      closedPeriodId: openPeriod?.id ?? null,
+      attendanceAtClose,
+    },
   });
 }
 
@@ -144,16 +197,24 @@ export async function reactivateHearing(
   const hearing = await prisma.hearing.findFirstOrThrow({
     where: { id: hearingId, meetingId },
   });
-  const before = { state: hearing.state };
 
-  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
-  const fullMap = await buildFullAttendeeRoleMap(meetingId, hearingId);
-  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
+  const alreadyActive = await prisma.hearing.findFirst({
+    where: { meetingId, state: "ACTIVE", NOT: { id: hearingId } },
+  });
+  if (alreadyActive) {
+    throw new Error(
+      `Hearing #${alreadyActive.hearingNumber} is already active — complete or deactivate it before reactivating another hearing.`,
+    );
+  }
+
+  const before = { state: hearing.state };
 
   const [, period] = await prisma.$transaction([
     prisma.hearing.update({ where: { id: hearingId }, data: { state: "ACTIVE" } }),
     prisma.hearingPeriod.create({ data: { hearingId } }),
   ]);
+
+  await syncMeetingRoles(meetingId);
 
   await logAudit({
     meetingId,

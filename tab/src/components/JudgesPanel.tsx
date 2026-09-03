@@ -2,18 +2,11 @@ import type { JudgeView } from "../types";
 import { Collapsible } from "./Collapsible";
 import { api } from "../api";
 
-const ROLE_LABEL: Record<JudgeView["role"], string> = {
-  JUDGE: "Judge",
-  PRESIDING_JUDGE: "Presiding Judge",
-  SECRETARY: "Secretary",
-  OTHER_OFFICER: "Officer",
-};
-
 function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
   const presiding = judge.role === "PRESIDING_JUDGE";
   return (
     <div className={`participant-row judge-row ${isMe ? "is-me" : ""}`}>
-      <span className="presence-dot connected" />
+      <span className={`presence-dot ${judge.connected ? "connected" : ""}`} />
       <span className="name">
         {judge.name}
         {isMe && " (you)"}
@@ -21,9 +14,12 @@ function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
       </span>
       {!isMe && (
         <span className="row-actions">
-          <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>
-            📞
-          </button>
+          {/* Call only makes sense for someone not already on the call. */}
+          {!judge.connected && (
+            <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>
+              📞
+            </button>
+          )}
           <button
             title="Message"
             onClick={async () => {
@@ -33,6 +29,19 @@ function Row({ judge, isMe }: { judge: JudgeView; isMe: boolean }) {
           >
             💬
           </button>
+          {judge.connected && (
+            <>
+              <button title="Mute" onClick={() => api.muteParticipant(judge.email)}>
+                🔇
+              </button>
+              <button
+                title="Turn off camera"
+                onClick={() => api.setParticipantCamera(judge.email, false)}
+              >
+                📷🚫
+              </button>
+            </>
+          )}
         </span>
       )}
     </div>

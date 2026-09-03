@@ -11,6 +11,10 @@ import { remapRouter } from "./routes/remap";
 import { messagesRouter } from "./routes/messages";
 import { meetingsRouter } from "./routes/meetings";
 import { provisionRouter } from "./routes/provision";
+import { notesRouter } from "./routes/notes";
+import { grantsRouter } from "./routes/grants";
+import { participantsRouter } from "./routes/participants";
+import { sessionRouter } from "./routes/session";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
@@ -83,6 +87,14 @@ app.use("/api/meetings/:meetingId/roster", rosterRouter);
 app.use("/api/meetings/:meetingId/judges", judgesRouter);
 app.use("/api/meetings/:meetingId/remap", remapRouter);
 app.use("/api/meetings/:meetingId/messages", messagesRouter);
+// notes/grants/participants/session define their own leaf paths (e.g.
+// GET /notes, POST /grants, POST /participants/:email/mute,
+// POST /end-session) rather than each getting their own app.use prefix —
+// mounted at the bare :meetingId base alongside meetingsRouter.
+app.use("/api/meetings/:meetingId", notesRouter);
+app.use("/api/meetings/:meetingId", grantsRouter);
+app.use("/api/meetings/:meetingId", participantsRouter);
+app.use("/api/meetings/:meetingId", sessionRouter);
 app.use("/api/meetings/:meetingId", meetingsRouter);
 
 const httpServer = http.createServer(app);

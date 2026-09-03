@@ -2,6 +2,7 @@ import { meetingIdParam } from "../util/params";
 import { Router } from "express";
 import { prisma } from "../db";
 import { broadcastState, setRosterStale } from "../ws";
+import { syncMeetingRoles } from "../graph/roleManager";
 
 // mergeParams: this router is mounted under /api/meetings/:meetingId
 // (index.ts) alongside every other resource router — see routes/meetings.ts
@@ -83,6 +84,16 @@ export async function applyRosterEvent(
       where: { meetingId, email: normalizedEmail },
       data: { isConnected: false, leftAt: new Date() },
     });
+  }
+
+  // A judge/auxiliary joining or leaving changes who should be presenter
+  // right now (services/presenterRules.ts) — not just at Activate/
+  // Complete/Reactivate. Never let a Graph hiccup break roster tracking
+  // itself: the RosterEntry write above already succeeded regardless.
+  try {
+    await syncMeetingRoles(meetingId);
+  } catch (err) {
+    console.error("[roster] syncMeetingRoles failed after roster event", err);
   }
 }
 

@@ -57,11 +57,17 @@ model Meeting {
   onlineMeetingId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  // Set once by the "End session" action (routes/session.ts) — sends every
+  // judge/auxiliary a personalized closure summary, see services/
+  // sessionSummary.ts. Re-ending an already-ended session is rejected.
+  endedAt         DateTime?
+  endedBy         String?
 
-  hearings     Hearing[]
-  rosterEntries RosterEntry[]
-  judges       JudgeOrAuxiliary[]
-  auditEntries AuditLogEntry[]
+  hearings        Hearing[]
+  rosterEntries   RosterEntry[]
+  judges          JudgeOrAuxiliary[]
+  auditEntries    AuditLogEntry[]
+  presenterGrants PresenterGrant[]
 }
 
 model Hearing {
@@ -70,7 +76,6 @@ model Hearing {
   meeting       Meeting        @relation(fields: [meetingId], references: [id])
   hearingNumber Int
   state         HearingState   @default(PENDING)
-  notes         String         @default("")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -78,8 +83,45 @@ model Hearing {
   periods         HearingPeriod[]
   remaps          RemapMapping[]
   auditEntries    AuditLogEntry[]
+  notes           HearingNote[]
 
   @@unique([meetingId, hearingNumber])
+  @@index([meetingId])
+}
+
+// Personal, per-author notes (docs/README.md — never shared/crossed between
+// staff). Replaces the old single Hearing.notes field. The live UI/socket
+// snapshot never includes these; only GET /notes (scoped to the calling
+// user's own authorEmail) exposes them — see routes/notes.ts.
+model HearingNote {
+  id          String   @id @default(cuid())
+  hearingId   String
+  hearing     Hearing  @relation(fields: [hearingId], references: [id])
+  authorEmail String
+  text        String   @default("")
+  updatedAt   DateTime @updatedAt
+
+  @@unique([hearingId, authorEmail])
+  @@index([hearingId])
+}
+
+// An explicit, ad-hoc override giving someone presenter (mic/camera) rights
+// they wouldn't otherwise have — e.g. a general-public observer staff wants
+// to let speak. Independent of hearing membership; combined with judges/
+// auxiliaries and the active hearing's parties in services/presenterRules.ts
+// to compute the full attendee-role map. Unlike mute/camera-off (one-shot,
+// unpersisted — see graph/client.ts), this is real, persisted state that
+// actually changes what gets PATCHed to Graph.
+model PresenterGrant {
+  id        String    @id @default(cuid())
+  meetingId String
+  meeting   Meeting   @relation(fields: [meetingId], references: [id])
+  email     String
+  grantedBy String
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+  revokedBy String?
+
   @@index([meetingId])
 }
 

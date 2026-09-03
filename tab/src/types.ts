@@ -29,7 +29,6 @@ export interface HearingView {
   attendanceStatus: AttendanceStatus;
   presentCount: number;
   expectedCount: number;
-  notes: string;
   parties: PartyPresence[];
   periods: HearingPeriodView[];
   activePeriodStartedAt: string | null;
@@ -41,6 +40,7 @@ export interface JudgeView {
   email: string;
   name: string;
   role: "JUDGE" | "PRESIDING_JUDGE" | "SECRETARY" | "OTHER_OFFICER";
+  connected: boolean;
 }
 
 export interface GeneralPublicEntry {
@@ -54,12 +54,20 @@ export interface RemappedIntoHearing {
   remapId: string;
 }
 
+export interface PresenterGrantView {
+  id: string;
+  email: string;
+  grantedAt: string;
+}
+
 export interface StateSnapshot {
   meetingId: string;
   generatedAt: string;
   rosterStale: boolean;
+  meetingEndedAt: string | null;
   judges: JudgeView[];
   hearings: HearingView[];
   generalPublic: GeneralPublicEntry[];
   remappedIntoHearing: RemappedIntoHearing[];
+  presenterGrants: PresenterGrantView[];
 }

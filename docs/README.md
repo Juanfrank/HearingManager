@@ -195,6 +195,81 @@ never calls them over HTTP (`backend/src/bot/index.ts` calls the same
 underlying function in-process), so leaving them open in production would
 let any signed-in user fabricate attendance.
 
+## Presence-based mic/camera permissions
+
+Who's promoted to presenter in the Graph role PATCH is computed by
+`backend/src/services/presenterRules.ts` (pure, unit-tested in
+`presenterRules.test.ts`), used by `graph/roleManager.ts`'s
+`syncMeetingRoles()`:
+
+- **Judges/auxiliaries** — always presenter while connected, regardless of
+  which hearing (if any) is active.
+- **The active hearing's currently-present expected parties** (+ anyone
+  remapped into it) — everyone else, including parties of any *other*
+  hearing, defaults to attendee.
+- **Anyone with an active `PresenterGrant`** — an explicit, persisted
+  override (`routes/grants.ts`, `POST /grants` / `POST /grants/:id/revoke`)
+  for someone who wouldn't otherwise qualify, e.g. a general-public
+  observer staff wants to let speak. Shown in the tab's General public
+  section as a "Grant mic/camera" / "Revoke" toggle.
+
+`syncMeetingRoles()` runs on every roster join/leave (`routes/roster.ts`,
+`bot/index.ts`), not just Activate/Complete/Reactivate — a judge joining
+mid-session becomes presenter immediately.
+
+**Only one hearing can be `ACTIVE` at a time.** Activating a second hearing
+while one is already active is rejected (409) rather than silently
+swapping — see `graph/roleManager.ts`'s `activateHearing`/
+`reactivateHearing`. The tab spotlights the (at most one) active hearing
+outside the Ready/Incomplete/No-show groups entirely
+(`tab/src/components/HearingsSection.tsx`).
+
+**Mute / camera-off are a separate, weaker lever than the role PATCH.**
+Demoting someone to attendee only changes their *ability to self-unmute
+going forward* (Teams' standard "only organizers/presenters can turn on
+mic" meeting option) — it can't instantly cut off someone already
+unmuted. Actually forcing that requires Microsoft's real-time Cloud
+Communications/Calls API, the same prerequisite already deferred for
+Calling (build-order item 8 below). `routes/participants.ts`'s
+mute/camera-off buttons are wired up and mocked under `GRAPH_MODE=mock`
+(`graph/client.ts`'s `muteParticipant`/`setParticipantCamera`) so the UI
+and audit trail exist now; real mode throws until that Calls API
+prerequisite is actually in place.
+
+## Personal, per-hearing notes
+
+`HearingNote` (`backend/prisma/schema.prisma`) is one row per
+(hearing, author) — never a single shared field. `GET /api/meetings/:id/notes`
+returns only the calling user's own notes; `PUT .../hearings/:id/notes`
+only ever upserts the caller's own row. The shared state snapshot pushed
+over the socket (`services/stateSnapshot.ts`) **never includes notes at
+all** — that's deliberate, not an oversight, since including them in a
+room-wide broadcast would leak every author's notes to everyone watching
+that meeting. The tab fetches its own notes once via REST
+(`tab/src/App.tsx`) and keeps them in local state.
+
+One tension worth knowing about: the full note text still goes into
+`AuditLogEntry` (`routes/notes.ts`) for the judiciary record, per docs §7
+("this data may need to hold up as a record of how a hearing was actually
+conducted") — even though the live UI never shows it to anyone but its
+author. That's intentional, not a leak: there's no audit-log-viewing UI in
+the tab today, so nothing currently exposes it.
+
+## Session-end summaries
+
+`POST /api/meetings/:meetingId/end-session` (`routes/session.ts`) sends
+every judge/auxiliary in the meeting ONE personalized message
+(`services/sessionSummary.ts`) summarizing every hearing's final state —
+attendance plus, per hearing, **only that recipient's own note**, never
+another author's. For a `COMPLETED` hearing, attendance comes from the
+frozen snapshot `graph/roleManager.ts`'s `completeHearing()` stores on the
+`hearing.complete` audit entry at the moment it closed (not recomputed
+live, which can drift as people leave the call afterward); a hearing still
+`PENDING`/`ACTIVE` when the session ends falls back to live attendance,
+labeled as such. Fires once — `meeting.endedAt` blocks a second call with
+409. Triggered from the tab via the "End session & send summaries" button
+(confirm-before-firing, since it notifies people and can't be undone).
+
 ## Local development
 
 ### Backend
@@ -278,6 +353,10 @@ Per the original build instructions, in order:
    registered calling bot via the Cloud Communications API, real-time media
    handling, and `Calls.Initiate.All`. The call icon in the tab currently
    shows a "not yet built" message rather than doing nothing silently.
+   Per-participant mute/camera-off (`routes/participants.ts`) share this
+   exact prerequisite — the buttons and mocked plumbing exist (see
+   "Presence-based mic/camera permissions" above), real enforcement doesn't
+   yet.
 9. ✅ Audit logging — every role change, remap, undo, notes edit, and
    status transition is logged with actor/timestamp/before-after via
    `backend/src/services/auditLog.ts`, called from every mutation route

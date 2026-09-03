@@ -30,16 +30,27 @@ function periodDuration(startedAt: string, endedAt: string | null) {
   return `${h}:${m}:${s}`;
 }
 
-export function HearingCard({ hearing }: { hearing: HearingView }) {
-  const [notes, setNotes] = useState(hearing.notes);
+export function HearingCard({
+  hearing,
+  notes,
+  onNotesChange,
+  spotlight,
+}: {
+  hearing: HearingView;
+  /** This viewer's own note for this hearing — personal, never shared (backend/src/routes/notes.ts). */
+  notes: string;
+  onNotesChange: (hearingId: string, text: string) => void;
+  spotlight?: boolean;
+}) {
+  const [draft, setDraft] = useState(notes);
   const elapsed = useElapsed(hearing.state === "ACTIVE" ? hearing.activePeriodStartedAt : null);
 
-  useEffect(() => setNotes(hearing.notes), [hearing.notes]);
+  useEffect(() => setDraft(notes), [notes]);
 
   const activeRemaps = hearing.remaps.filter((r) => !r.undoneAt);
 
   return (
-    <div className="hearing-card">
+    <div className={`hearing-card ${spotlight ? "spotlight" : ""}`}>
       <div className="hearing-card-header">
         <div>
           <strong>Hearing #{hearing.hearingNumber}</strong>{" "}
@@ -63,7 +74,12 @@ export function HearingCard({ hearing }: { hearing: HearingView }) {
           </span>
           {!p.present && <span className="absent-label">(absent)</span>}
           <span className="row-actions">
-            <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>📞</button>
+            {/* Call only makes sense for someone not already on the call. */}
+            {!p.present && (
+              <button title="Call" onClick={() => alert("Calling is a Phase 2 feature (not yet built).")}>
+                📞
+              </button>
+            )}
             <button
               title="Message"
               onClick={async () => {
@@ -73,6 +89,19 @@ export function HearingCard({ hearing }: { hearing: HearingView }) {
             >
               💬
             </button>
+            {p.present && (
+              <>
+                <button title="Mute" onClick={() => api.muteParticipant(p.email)}>
+                  🔇
+                </button>
+                <button
+                  title="Turn off camera"
+                  onClick={() => api.setParticipantCamera(p.email, false)}
+                >
+                  📷🚫
+                </button>
+              </>
+            )}
           </span>
         </div>
       ))}
@@ -94,11 +123,11 @@ export function HearingCard({ hearing }: { hearing: HearingView }) {
       ))}
 
       <textarea
-        placeholder="Add notes..."
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Add notes... (private — only you see this)"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
-          if (notes !== hearing.notes) api.updateNotes(hearing.id, notes);
+          if (draft !== notes) onNotesChange(hearing.id, draft);
         }}
       />
 
@@ -108,7 +137,16 @@ export function HearingCard({ hearing }: { hearing: HearingView }) {
         </button>
       )}
       {hearing.state === "PENDING" && (
-        <button className="primary-action" onClick={() => api.activateHearing(hearing.id)}>
+        <button
+          className="primary-action"
+          onClick={async () => {
+            try {
+              await api.activateHearing(hearing.id);
+            } catch (err) {
+              alert((err as Error).message);
+            }
+          }}
+        >
           Set as active
         </button>
       )}
@@ -125,7 +163,16 @@ export function HearingCard({ hearing }: { hearing: HearingView }) {
               </div>
             ))}
           </div>
-          <button className="primary-action" onClick={() => api.reactivateHearing(hearing.id)}>
+          <button
+            className="primary-action"
+            onClick={async () => {
+              try {
+                await api.reactivateHearing(hearing.id);
+              } catch (err) {
+                alert((err as Error).message);
+              }
+            }}
+          >
             Reactivate
           </button>
         </>

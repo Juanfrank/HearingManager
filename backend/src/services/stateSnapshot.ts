@@ -10,9 +10,14 @@ import {
  * GET /api/meetings/:meetingId/state for initial load / reconnect. Scoped
  * to one Meeting (the tenant boundary — see prisma/schema.prisma) so
  * concurrent hearings in different Teams meetings never mix.
+ *
+ * Deliberately never includes hearing notes — those are personal per
+ * author (services/../routes/notes.ts) and must never travel over this
+ * shared broadcast channel.
  */
 export async function buildStateSnapshot(meetingId: string, rosterStale: boolean) {
-  const [judges, hearings, roster, remaps] = await Promise.all([
+  const [meeting, judges, hearings, roster, remaps, presenterGrants] = await Promise.all([
+    prisma.meeting.findUnique({ where: { id: meetingId } }),
     prisma.judgeOrAuxiliary.findMany({ where: { meetingId }, orderBy: { role: "asc" } }),
     prisma.hearing.findMany({
       where: { meetingId },
@@ -29,6 +34,7 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
       include: { mappedToExpectedParty: true },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.presenterGrant.findMany({ where: { meetingId, revokedAt: null } }),
   ]);
 
   const hearingViews = hearings.map((h) => {
@@ -47,7 +53,6 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
       attendanceStatus: attendance.status, // ready | incomplete | no_show (derived)
       presentCount: attendance.presentCount,
       expectedCount: attendance.expectedCount,
-      notes: h.notes,
       parties: attendance.parties,
       periods: h.periods.map((p) => ({
         id: p.id,
@@ -65,6 +70,14 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
       })),
     };
   });
+
+  const connectedEmails = new Set(
+    roster.filter((r) => r.isConnected).map((r) => r.email.toLowerCase()),
+  );
+  const judgeViews = judges.map((j) => ({
+    ...j,
+    connected: connectedEmails.has(j.email.toLowerCase()),
+  }));
 
   const generalPublic = generalPublicEntries(
     roster,
@@ -87,9 +100,15 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
     meetingId,
     generatedAt: new Date().toISOString(),
     rosterStale,
-    judges,
+    meetingEndedAt: meeting?.endedAt ?? null,
+    judges: judgeViews,
     hearings: hearingViews,
     generalPublic,
     remappedIntoHearing,
+    presenterGrants: presenterGrants.map((g) => ({
+      id: g.id,
+      email: g.email,
+      grantedAt: g.grantedAt,
+    })),
   };
 }

@@ -135,3 +135,55 @@ textarea {
 
 .remapped-struck { opacity: 0.6; }
 .struck { text-decoration: line-through; }
+
+/* Active hearing, pulled out of the nested Ready/Incomplete/No-show
+   groups and shown as its own spotlighted panel. */
+.spotlight-wrap { margin-bottom: 14px; }
+.spotlight-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.hearing-card.spotlight {
+  border: 2px solid var(--green);
+  box-shadow: 0 0 0 3px rgba(26, 127, 55, 0.12);
+  background: #f3faf5;
+}
+
+.session-ended-banner {
+  background: #eef6f0;
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.end-session-btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--red);
+  background: white;
+  color: var(--red);
+  font-weight: 600;
+  cursor: pointer;
+  margin: 4px 0 14px;
+}
+.end-session-btn:hover { background: #fbeaec; }
+
+.grant-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.grant-btn, .revoke-btn {
+  font-size: 11.5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.grant-btn { border: 1px solid var(--green); color: var(--green); background: white; }
+.revoke-btn { border: 1px solid var(--red); color: var(--red); background: white; }
+.grant-indicator { font-size: 11.5px; color: var(--green); }
