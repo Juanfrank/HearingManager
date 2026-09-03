@@ -1,9 +1,11 @@
+import { meetingIdParam } from "../util/params";
 import { Router } from "express";
 import { sendChatMessage } from "../graph/client";
 import { logAudit } from "../services/auditLog";
 import type { AuthedRequest } from "../auth/verifyTeamsToken";
 
-export const messagesRouter = Router();
+// mergeParams: mounted under /api/meetings/:meetingId (index.ts).
+export const messagesRouter = Router({ mergeParams: true });
 
 /** docs §5.6: POST /chats/{chat-id}/messages (mocked until Graph is real). */
 messagesRouter.post("/", async (req, res) => {
@@ -12,6 +14,7 @@ messagesRouter.post("/", async (req, res) => {
   try {
     const result = await sendChatMessage(toEmail, fromEmail, text);
     await logAudit({
+      meetingId: meetingIdParam(req),
       actorEmail: fromEmail,
       action: "message.send",
       after: { toEmail, text, mocked: result.mocked },

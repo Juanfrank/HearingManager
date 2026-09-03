@@ -41,8 +41,33 @@ enum RemapTargetType {
   NEW_PARTY
 }
 
+// The tenant boundary: one Meeting per live Teams meeting (docs §1 — "one
+// meeting per hearing day/session"). id is the Teams conversation/meeting
+// ID (activity.conversation.id on the bot side, context.meeting.id from
+// the tab's Teams JS SDK context) — that ID is handed to us by Teams for
+// free on both the bot and the tab, unlike Graph's onlineMeetingId, so it's
+// what every other table is scoped by. organizerUserId/onlineMeetingId are
+// filled in separately (see routes/meetings.ts) once/if needed for the
+// Graph role-PATCH (graph/roleManager.ts) — nullable because a meeting can
+// exist here (roster events flowing, hearings being tracked) before that
+// resolution has happened, and GRAPH_MODE=mock never needs it at all.
+model Meeting {
+  id              String   @id
+  organizerUserId String?
+  onlineMeetingId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  hearings     Hearing[]
+  rosterEntries RosterEntry[]
+  judges       JudgeOrAuxiliary[]
+  auditEntries AuditLogEntry[]
+}
+
 model Hearing {
   id            String         @id @default(cuid())
+  meetingId     String
+  meeting       Meeting        @relation(fields: [meetingId], references: [id])
   hearingNumber Int
   state         HearingState   @default(PENDING)
   notes         String         @default("")
@@ -54,7 +79,8 @@ model Hearing {
   remaps          RemapMapping[]
   auditEntries    AuditLogEntry[]
 
-  @@unique([hearingNumber])
+  @@unique([meetingId, hearingNumber])
+  @@index([meetingId])
 }
 
 model HearingPeriod {
@@ -83,14 +109,21 @@ model ExpectedParty {
 
 // Live roster, fed exclusively by bot roster events (join/leave). Source of
 // truth for "who is currently connected" — never polled, never derived.
+// Scoped per meeting: the same person's email can legitimately show up
+// connected in two different concurrent meetings.
 model RosterEntry {
   id          String    @id @default(cuid())
-  email       String    @unique
+  meetingId   String
+  meeting     Meeting   @relation(fields: [meetingId], references: [id])
+  email       String
   displayName String
   joinedAt    DateTime  @default(now())
   leftAt      DateTime?
   isConnected Boolean   @default(true)
   updatedAt   DateTime  @updatedAt
+
+  @@unique([meetingId, email])
+  @@index([meetingId])
 }
 
 model RemapMapping {
@@ -109,18 +142,30 @@ model RemapMapping {
   @@index([rosterEmail])
 }
 
+// Scoped per meeting: a judge presides over one meeting at a time, and the
+// same person may be a JUDGE in one meeting and, say, SECRETARY in another
+// on a different day.
 model JudgeOrAuxiliary {
-  id    String    @id @default(cuid())
-  email String    @unique
-  name  String
-  role  JudgeRole
+  id        String    @id @default(cuid())
+  meetingId String
+  meeting   Meeting   @relation(fields: [meetingId], references: [id])
+  email     String
+  name      String
+  role      JudgeRole
+
+  @@unique([meetingId, email])
+  @@index([meetingId])
 }
 
 // Every role change, remap, undo, and status transition — actor, timestamp,
 // before/after state. This is a record of how a hearing was actually
-// conducted; never delete rows from this table.
+// conducted; never delete rows from this table. meetingId is set even for
+// entries without a hearingId (e.g. a message send not tied to one hearing)
+// so the audit trail stays scoped and queryable per meeting too.
 model AuditLogEntry {
   id         String   @id @default(cuid())
+  meetingId  String?
+  meeting    Meeting? @relation(fields: [meetingId], references: [id])
   hearingId  String?
   hearing    Hearing? @relation(fields: [hearingId], references: [id])
   actorEmail String
@@ -129,6 +174,7 @@ model AuditLogEntry {
   after      Json?
   createdAt  DateTime @default(now())
 
+  @@index([meetingId])
   @@index([hearingId])
   @@index([createdAt])
 }

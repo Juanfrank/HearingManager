@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import type { StateSnapshot } from "./types";
-import { getAuthToken } from "./teamsContext";
+import { getAuthToken, getMeetingId } from "./teamsContext";
 
 const SOCKET_BASE = import.meta.env.VITE_SOCKET_BASE ?? "http://localhost:3978";
 
@@ -13,21 +13,33 @@ function devActorEmailOverride(): string | null {
 /**
  * docs §5.1: the tab is pushed updates over the socket, it never polls the
  * backend. onState fires once immediately on connect (server sends the
- * current snapshot) and again on every subsequent state change.
+ * current snapshot, scoped to this meeting) and again on every subsequent
+ * state change in that meeting.
  *
- * The socket carries the same Teams-SSO token as REST calls (see
- * backend/src/ws.ts's handshake auth) — pushed state includes participant
- * names/emails, so it needs the same identity check as the API.
+ * The socket carries the same meetingId and Teams-SSO token as REST calls
+ * (see backend/src/ws.ts's handshake) — the server joins it to a
+ * per-meeting room and rejects a connection with no meetingId outright, so
+ * two concurrent meetings' tabs never end up in the same broadcast group.
  */
 export async function subscribeToState(
   onState: (snapshot: StateSnapshot) => void,
 ): Promise<() => void> {
+  const meetingId = await getMeetingId();
+  if (!meetingId) {
+    throw new Error(
+      "no meeting id available — this tab isn't running inside a Teams meeting (or pass ?meetingId= for local dev)",
+    );
+  }
+
   const token = await getAuthToken();
   const devEmail = devActorEmailOverride();
 
   socket = io(SOCKET_BASE, {
     transports: ["websocket"],
-    auth: token ? { token } : devEmail ? { devActorEmail: devEmail } : {},
+    auth: {
+      meetingId,
+      ...(token ? { token } : devEmail ? { devActorEmail: devEmail } : {}),
+    },
   });
   socket.on("state", onState);
   return () => {

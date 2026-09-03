@@ -3,24 +3,39 @@ import { deriveHearingAttendance } from "../services/statusDerivation";
 import { patchMeetingRoles, type AttendeeRole } from "./client";
 import { logAudit } from "../services/auditLog";
 
-const ORGANIZER_USER_ID = process.env.ORGANIZER_USER_ID ?? "";
-const ONLINE_MEETING_ID = process.env.ONLINE_MEETING_ID ?? "";
+// Fallback for a meeting whose Meeting row hasn't had organizerUserId/
+// onlineMeetingId resolved yet (see routes/meetings.ts) — lets a single-
+// meeting deployment keep working exactly as before without registering
+// anything. A multi-meeting deployment should register every Meeting.
+const FALLBACK_ORGANIZER_USER_ID = process.env.ORGANIZER_USER_ID ?? "";
+const FALLBACK_ONLINE_MEETING_ID = process.env.ONLINE_MEETING_ID ?? "";
+
+async function resolveGraphMeetingRef(meetingId: string) {
+  const meeting = await prisma.meeting.findUnique({ where: { id: meetingId } });
+  return {
+    organizerUserId: meeting?.organizerUserId || FALLBACK_ORGANIZER_USER_ID,
+    onlineMeetingId: meeting?.onlineMeetingId || FALLBACK_ONLINE_MEETING_ID,
+  };
+}
 
 /**
- * Builds the FULL authoritative attendee-role map for the meeting: every
- * currently-connected participant across every hearing, with the ACTIVE
- * hearing's connected (incl. remapped) members promoted to presenter and
- * everyone else left as attendee. Rebuilding this from scratch every time
- * — rather than tracking a partial diff — is what keeps the "never a
- * partial diff" guarantee in docs §5.2 easy to reason about.
+ * Builds the FULL authoritative attendee-role map for one Meeting: every
+ * currently-connected participant across every hearing IN THAT MEETING,
+ * with the ACTIVE hearing's connected (incl. remapped) members promoted to
+ * presenter and everyone else left as attendee. Rebuilding this from
+ * scratch every time — rather than tracking a partial diff — is what keeps
+ * the "never a partial diff" guarantee in docs §5.2 easy to reason about.
+ * Scoping by meetingId is what keeps two concurrent meetings' role maps
+ * from ever being computed from each other's roster.
  */
 async function buildFullAttendeeRoleMap(
+  meetingId: string,
   presenterHearingId: string | null,
 ): Promise<AttendeeRole[]> {
   const [roster, hearings, remaps] = await Promise.all([
-    prisma.rosterEntry.findMany({ where: { isConnected: true } }),
-    prisma.hearing.findMany({ include: { expectedParties: true } }),
-    prisma.remapMapping.findMany({ where: { undoneAt: null } }),
+    prisma.rosterEntry.findMany({ where: { meetingId, isConnected: true } }),
+    prisma.hearing.findMany({ where: { meetingId }, include: { expectedParties: true } }),
+    prisma.remapMapping.findMany({ where: { undoneAt: null, hearing: { meetingId } } }),
   ]);
 
   const presenterEmails = new Set<string>();
@@ -53,14 +68,19 @@ async function buildFullAttendeeRoleMap(
   }));
 }
 
-export async function activateHearing(hearingId: string, actorEmail: string) {
-  const hearing = await prisma.hearing.findUniqueOrThrow({
-    where: { id: hearingId },
+export async function activateHearing(
+  meetingId: string,
+  hearingId: string,
+  actorEmail: string,
+) {
+  const hearing = await prisma.hearing.findFirstOrThrow({
+    where: { id: hearingId, meetingId },
   });
   const before = { state: hearing.state };
 
-  const fullMap = await buildFullAttendeeRoleMap(hearingId);
-  await patchMeetingRoles(ORGANIZER_USER_ID, ONLINE_MEETING_ID, fullMap);
+  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
+  const fullMap = await buildFullAttendeeRoleMap(meetingId, hearingId);
+  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
 
   const [, period] = await prisma.$transaction([
     prisma.hearing.update({ where: { id: hearingId }, data: { state: "ACTIVE" } }),
@@ -68,6 +88,7 @@ export async function activateHearing(hearingId: string, actorEmail: string) {
   ]);
 
   await logAudit({
+    meetingId,
     hearingId,
     actorEmail,
     action: "hearing.activate",
@@ -78,15 +99,20 @@ export async function activateHearing(hearingId: string, actorEmail: string) {
   return period;
 }
 
-export async function completeHearing(hearingId: string, actorEmail: string) {
-  const hearing = await prisma.hearing.findUniqueOrThrow({
-    where: { id: hearingId },
+export async function completeHearing(
+  meetingId: string,
+  hearingId: string,
+  actorEmail: string,
+) {
+  const hearing = await prisma.hearing.findFirstOrThrow({
+    where: { id: hearingId, meetingId },
   });
   const before = { state: hearing.state };
 
   // Demote everyone back to attendee (no hearing is presenter now).
-  const fullMap = await buildFullAttendeeRoleMap(null);
-  await patchMeetingRoles(ORGANIZER_USER_ID, ONLINE_MEETING_ID, fullMap);
+  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
+  const fullMap = await buildFullAttendeeRoleMap(meetingId, null);
+  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
 
   const openPeriod = await prisma.hearingPeriod.findFirst({
     where: { hearingId, endedAt: null },
@@ -101,6 +127,7 @@ export async function completeHearing(hearingId: string, actorEmail: string) {
   await prisma.hearing.update({ where: { id: hearingId }, data: { state: "COMPLETED" } });
 
   await logAudit({
+    meetingId,
     hearingId,
     actorEmail,
     action: "hearing.complete",
@@ -109,14 +136,19 @@ export async function completeHearing(hearingId: string, actorEmail: string) {
   });
 }
 
-export async function reactivateHearing(hearingId: string, actorEmail: string) {
-  const hearing = await prisma.hearing.findUniqueOrThrow({
-    where: { id: hearingId },
+export async function reactivateHearing(
+  meetingId: string,
+  hearingId: string,
+  actorEmail: string,
+) {
+  const hearing = await prisma.hearing.findFirstOrThrow({
+    where: { id: hearingId, meetingId },
   });
   const before = { state: hearing.state };
 
-  const fullMap = await buildFullAttendeeRoleMap(hearingId);
-  await patchMeetingRoles(ORGANIZER_USER_ID, ONLINE_MEETING_ID, fullMap);
+  const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
+  const fullMap = await buildFullAttendeeRoleMap(meetingId, hearingId);
+  await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
 
   const [, period] = await prisma.$transaction([
     prisma.hearing.update({ where: { id: hearingId }, data: { state: "ACTIVE" } }),
@@ -124,6 +156,7 @@ export async function reactivateHearing(hearingId: string, actorEmail: string) {
   ]);
 
   await logAudit({
+    meetingId,
     hearingId,
     actorEmail,
     action: "hearing.reactivate",

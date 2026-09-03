@@ -68,3 +68,40 @@ export async function getAuthToken(): Promise<string | null> {
     return null;
   }
 }
+
+let cachedMeetingId: string | null = null;
+
+/**
+ * Resolves the CURRENT Teams meeting's id — the tenant boundary every
+ * backend route and the socket connection are scoped by (see
+ * backend/prisma/schema.prisma's Meeting model and docs/README.md). This
+ * is the same id Teams hands the bot on every activity
+ * (activity.conversation.id, backend/src/bot/index.ts), so a tab and the
+ * bot serving the same live meeting always agree on which Meeting row to
+ * use without either side having to look anything up.
+ *
+ * Cached for the tab's lifetime — unlike the auth token, the meeting a tab
+ * instance is running in never changes underneath it.
+ */
+export async function getMeetingId(): Promise<string | null> {
+  if (cachedMeetingId) return cachedMeetingId;
+
+  const devOverride = new URLSearchParams(window.location.search).get("meetingId");
+  if (devOverride) {
+    cachedMeetingId = devOverride;
+    return cachedMeetingId;
+  }
+
+  if (await ensureInitialized()) {
+    try {
+      const context = await microsoftTeams.app.getContext();
+      if (context.meeting?.id) {
+        cachedMeetingId = context.meeting.id;
+        return cachedMeetingId;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return null;
+}

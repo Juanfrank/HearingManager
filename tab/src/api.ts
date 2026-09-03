@@ -1,4 +1,4 @@
-import { getAuthToken } from "./teamsContext";
+import { getAuthToken, getMeetingId } from "./teamsContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3978/api";
 
@@ -8,6 +8,22 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3978/api";
 // Never relied on when a real Teams SSO token is available.
 function devActorEmailOverride(): string | null {
   return new URLSearchParams(window.location.search).get("actorEmail");
+}
+
+/**
+ * Every route is scoped under /api/meetings/:meetingId (backend/src/
+ * index.ts) — this resolves the current meeting once (teamsContext.ts,
+ * cached) and prefixes every request with it, so nothing here needs to
+ * remember to pass it explicitly.
+ */
+async function meetingPath(path: string): Promise<string> {
+  const meetingId = await getMeetingId();
+  if (!meetingId) {
+    throw new Error(
+      "no meeting id available — this tab isn't running inside a Teams meeting (or pass ?meetingId= for local dev)",
+    );
+  }
+  return `/meetings/${encodeURIComponent(meetingId)}${path}`;
 }
 
 async function request(path: string, init?: RequestInit) {
@@ -24,16 +40,24 @@ async function request(path: string, init?: RequestInit) {
     if (devEmail) headers["x-actor-email"] = devEmail;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const scopedPath = await meetingPath(path);
+  const res = await fetch(`${API_BASE}${scopedPath}`, { ...init, headers });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${init?.method ?? "GET"} ${path} failed: ${res.status} ${body}`);
+    throw new Error(`${init?.method ?? "GET"} ${scopedPath} failed: ${res.status} ${body}`);
   }
   return res.status === 204 ? null : res.json();
 }
 
 export const api = {
   getState: () => request("/state"),
+  /**
+   * Idempotent — registers this meeting's Meeting row (routes/meetings.ts)
+   * so hearings/judges can be created even before any roster event has
+   * happened. Call once on tab startup (App.tsx).
+   */
+  registerMeeting: (payload?: { organizerUserId?: string; onlineMeetingId?: string }) =>
+    request("/register", { method: "POST", body: JSON.stringify(payload ?? {}) }),
   activateHearing: (id: string) => request(`/hearings/${id}/activate`, { method: "POST" }),
   completeHearing: (id: string) => request(`/hearings/${id}/complete`, { method: "POST" }),
   reactivateHearing: (id: string) => request(`/hearings/${id}/reactivate`, { method: "POST" }),

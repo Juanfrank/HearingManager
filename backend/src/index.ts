@@ -9,6 +9,7 @@ import { rosterRouter } from "./routes/roster";
 import { judgesRouter } from "./routes/judges";
 import { remapRouter } from "./routes/remap";
 import { messagesRouter } from "./routes/messages";
+import { meetingsRouter } from "./routes/meetings";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
@@ -56,16 +57,23 @@ app.post("/api/messages/teams", async (req, res) => {
 // actually stand behind.
 app.use("/api", requireTeamsUser);
 
-app.get("/api/state", async (_req, res) => {
-  res.json(await buildStateSnapshot(false));
+app.get("/api/meetings/:meetingId/state", async (req, res) => {
+  res.json(await buildStateSnapshot(req.params.meetingId, false));
 });
 
-app.use("/api/hearings", hearingsRouter);
-app.use("/api/parties", partiesRouter);
-app.use("/api/roster", rosterRouter);
-app.use("/api/judges", judgesRouter);
-app.use("/api/remap", remapRouter);
-app.use("/api/messages", messagesRouter);
+// Every resource is scoped under :meetingId (Teams' own meeting/
+// conversation id, resolved by the tab from its meeting context — see
+// tab/src/teamsContext.ts) — the tenant boundary that keeps two
+// concurrent meetings' hearings/roster/judges from ever mixing. See
+// prisma/schema.prisma's Meeting model and routes/meetings.ts for how a
+// Meeting row comes to exist in the first place.
+app.use("/api/meetings/:meetingId/hearings", hearingsRouter);
+app.use("/api/meetings/:meetingId/parties", partiesRouter);
+app.use("/api/meetings/:meetingId/roster", rosterRouter);
+app.use("/api/meetings/:meetingId/judges", judgesRouter);
+app.use("/api/meetings/:meetingId/remap", remapRouter);
+app.use("/api/meetings/:meetingId/messages", messagesRouter);
+app.use("/api/meetings/:meetingId", meetingsRouter);
 
 const httpServer = http.createServer(app);
 initWs(httpServer, TAB_ORIGIN);

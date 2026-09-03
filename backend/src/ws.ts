@@ -4,7 +4,13 @@ import { buildStateSnapshot } from "./services/stateSnapshot";
 import { verifyBearerToken, isDevBypass } from "./auth/verifyTeamsToken";
 
 let io: SocketIOServer | null = null;
-let rosterStale = false;
+// rosterStale is per-meeting: one meeting's bot losing its roster
+// connection has nothing to do with any other concurrent meeting's state.
+const rosterStaleByMeeting = new Map<string, boolean>();
+
+function meetingRoom(meetingId: string) {
+  return `meeting:${meetingId}`;
+}
 
 export function initWs(httpServer: HttpServer, corsOrigin: string) {
   io = new SocketIOServer(httpServer, {
@@ -13,8 +19,14 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
 
   // Same identity check as REST (auth/verifyTeamsToken.ts) — the pushed
   // state includes participant names/emails, so an unauthenticated socket
-  // would leak PII even though it can't mutate anything.
+  // would leak PII even though it can't mutate anything. meetingId is
+  // required from every client regardless of auth mode — see
+  // tab/src/socket.ts for how it's resolved (Teams meeting context).
   io.use((socket, next) => {
+    const meetingId = socket.handshake.auth?.meetingId as string | undefined;
+    if (!meetingId) return next(new Error("missing meetingId"));
+    socket.data.meetingId = meetingId;
+
     if (isDevBypass()) return next();
     const token = socket.handshake.auth?.token as string | undefined;
     if (!token) return next(new Error("missing auth token"));
@@ -24,24 +36,28 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
   });
 
   io.on("connection", async (socket) => {
-    socket.emit("state", await buildStateSnapshot(rosterStale));
+    const meetingId = socket.data.meetingId as string;
+    socket.join(meetingRoom(meetingId));
+    socket.emit("state", await buildStateSnapshot(meetingId, rosterStaleByMeeting.get(meetingId) ?? false));
   });
 
   return io;
 }
 
-/** Recompute and push the full snapshot to every connected tab. */
-export async function broadcastState() {
+/** Recompute and push the full snapshot to every tab watching this meeting. */
+export async function broadcastState(meetingId: string) {
   if (!io) return;
-  const snapshot = await buildStateSnapshot(rosterStale);
-  io.emit("state", snapshot);
+  const snapshot = await buildStateSnapshot(meetingId, rosterStaleByMeeting.get(meetingId) ?? false);
+  io.to(meetingRoom(meetingId)).emit("state", snapshot);
 }
 
 /**
  * docs §7 resilience: if the bot's Graph/roster connection drops mid-
- * hearing, mark state stale rather than silently showing outdated presence.
+ * hearing, mark that meeting's state stale rather than silently showing
+ * outdated presence — scoped so one meeting's bot trouble doesn't flag
+ * every other concurrent meeting as stale too.
  */
-export function setRosterStale(stale: boolean) {
-  rosterStale = stale;
-  void broadcastState();
+export function setRosterStale(meetingId: string, stale: boolean) {
+  rosterStaleByMeeting.set(meetingId, stale);
+  void broadcastState(meetingId);
 }

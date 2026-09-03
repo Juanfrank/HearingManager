@@ -36,6 +36,44 @@ tab/        React tab UI (Teams JS SDK for meeting/user context,
 - **Database**: Postgres via Prisma (`backend/prisma/schema.prisma`) — low
   volume, high integrity data, not a scale problem.
 
+### Multi-meeting: one shared backend, many concurrent meetings
+
+This backend serves any number of simultaneous Teams meetings at once — a
+central deployment for a court with several courtrooms, each running its
+own hearing session in parallel, rather than one backend redeployed per
+session. The tenant boundary is the `Meeting` model
+(`backend/prisma/schema.prisma`), keyed by **the Teams meeting/conversation
+ID** — the same ID Teams hands the bot on every activity
+(`activity.conversation.id`, `backend/src/bot/index.ts`) and the tab from
+its own meeting context (`context.meeting.id`,
+`tab/src/teamsContext.ts`'s `getMeetingId()`), so both sides agree on which
+Meeting a given event belongs to with no extra lookup or configuration.
+
+Every table that matters (`Hearing`, `RosterEntry`, `JudgeOrAuxiliary`,
+`AuditLogEntry`) carries a `meetingId`, and every REST route is mounted
+under `/api/meetings/:meetingId/...` (`backend/src/index.ts`) — a request
+for one meeting's hearings can never see or touch another's, enforced at
+the Prisma query level in every route (`backend/src/routes/*.ts`), not
+just by the client not asking. The Socket.IO layer mirrors this:
+`backend/src/ws.ts` requires `meetingId` in the connection handshake and
+joins each socket to a room scoped to it, so a state push for one meeting
+is never broadcast to a tab watching another.
+
+The Graph role-PATCH (`backend/src/graph/roleManager.ts`) additionally
+needs to know which organizer/online-meeting Graph identifiers correspond
+to a given Teams meeting ID — those are optional fields on the `Meeting`
+row (`organizerUserId`/`onlineMeetingId`), settable via
+`POST /api/meetings/:meetingId/register` (`backend/src/routes/meetings.ts`,
+called by the tab once on startup). If unset, Graph calls fall back to the
+deployment-wide `ORGANIZER_USER_ID`/`ONLINE_MEETING_ID` env vars — fine for
+a single-meeting deployment, wrong for a real multi-meeting one. **Not yet
+wired up**: automatically resolving those two IDs from the Teams meeting
+context requires an extra Graph lookup
+(`GET /users/{organizerId}/onlineMeetings?$filter=JoinWebUrl eq '...'`)
+that isn't built — until it is, a multi-meeting deployment needs them
+registered by some other means (e.g. an admin script) before Activate/
+Complete will PATCH the correct meeting.
+
 ## Azure / Entra ID prerequisites (manual — cannot be done in code)
 
 These require the court's Microsoft 365 tenant admin, not just a
@@ -132,18 +170,25 @@ and point `DATABASE_URL` at it. No org-wide Postgres server needed.
 
 With `GRAPH_MODE=mock` and `AUTH_MODE=dev-bypass` (both defaults in
 `.env.example`), you can drive the whole hearing lifecycle without a live
-Teams meeting or a real Entra app registration — pass `x-actor-email` on
-each call, and `POST /api/roster/event`
+Teams meeting or a real Entra app registration. Every route is scoped
+under `/api/meetings/:meetingId/...` — pick any string as your test
+meeting's id, register it once, then pass `x-actor-email` on each call and
+`POST /api/meetings/:meetingId/roster/event`
 (`{ email, displayName, type: "joined" | "left" }`) to simulate join/leave:
 
 ```
-curl -X POST http://localhost:3978/api/hearings \
+curl -X POST http://localhost:3978/api/meetings/test-meeting-1/register \
+  -H 'Content-Type: application/json' -H 'x-actor-email: judge1@court.gov' -d '{}'
+
+curl -X POST http://localhost:3978/api/meetings/test-meeting-1/hearings \
   -H 'Content-Type: application/json' -H 'x-actor-email: judge1@court.gov' \
   -d '{"hearingNumber": 12, "expectedParties": [...]}'
 ```
 
-and the usual `/api/hearings/:id/{activate,complete,reactivate}` /
-`/api/remap` / `/api/messages` endpoints, same header. See
+and the usual `/api/meetings/:meetingId/hearings/:id/{activate,complete,
+reactivate}` / `/remap` / `/messages` endpoints, same header. Try two
+different `:meetingId` values side by side to see the isolation described
+above — hearings, roster, and state pushes never cross between them. See
 `backend/src/services/statusDerivation.test.ts` for the attendance-status
 rules exercised as unit tests (`npx vitest run`).
 
@@ -156,10 +201,12 @@ npm run dev                  # http://localhost:53000
 ```
 
 Outside of a real Teams meeting, open it directly in a browser with
-`?actorEmail=judge1@court.gov` to simulate being signed in as that judge —
-this skips real SSO token acquisition entirely (`tab/src/teamsContext.ts`)
-and sends `x-actor-email` instead, so the backend must also be running
-with `AUTH_MODE=dev-bypass` for this to work.
+`?actorEmail=judge1@court.gov&meetingId=test-meeting-1` to simulate being
+signed in as that judge in that meeting — this skips both real SSO token
+acquisition and real meeting-context resolution (`tab/src/teamsContext.ts`)
+and sends `x-actor-email` instead, so the backend must also be running with
+`AUTH_MODE=dev-bypass` for this to work. Without `?meetingId=`, the tab
+shows an explicit error rather than a blank dashboard — see App.tsx.
 
 ## Build-order status
 

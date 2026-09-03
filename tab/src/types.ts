@@ -55,6 +55,7 @@ export interface RemappedIntoHearing {
 }
 
 export interface StateSnapshot {
+  meetingId: string;
   generatedAt: string;
   rosterStale: boolean;
   judges: JudgeView[];

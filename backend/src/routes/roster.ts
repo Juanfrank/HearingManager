@@ -1,8 +1,12 @@
+import { meetingIdParam } from "../util/params";
 import { Router } from "express";
 import { prisma } from "../db";
 import { broadcastState, setRosterStale } from "../ws";
 
-export const rosterRouter = Router();
+// mergeParams: this router is mounted under /api/meetings/:meetingId
+// (index.ts) alongside every other resource router — see routes/meetings.ts
+// for where :meetingId itself comes from and how a Meeting row gets created.
+export const rosterRouter = Router({ mergeParams: true });
 
 // The bot never calls this over HTTP — bot/index.ts imports and calls
 // applyRosterEvent() directly in-process. This route only exists so the
@@ -34,21 +38,39 @@ rosterRouter.post("/event", async (req, res) => {
     return res.status(400).json({ error: "email and type are required" });
   }
 
-  await applyRosterEvent(email, displayName ?? email, type);
-  await broadcastState();
+  await applyRosterEvent(meetingIdParam(req), email, displayName ?? email, type);
+  await broadcastState(meetingIdParam(req));
   res.json({ ok: true });
 });
 
+/**
+ * The one code path both the real bot (bot/index.ts, in-process) and the
+ * dev simulation endpoint above use — single source of truth for "a
+ * roster event happened," scoped to whichever meeting it happened in.
+ * Upserts the Meeting row too: this is often the very first thing that
+ * happens for a brand-new meeting (a participant joins before anyone has
+ * hit routes/meetings.ts's explicit register endpoint), and RosterEntry's
+ * meetingId foreign key requires the Meeting row to already exist.
+ */
 export async function applyRosterEvent(
+  meetingId: string,
   email: string,
   displayName: string,
   type: "joined" | "left",
 ) {
   const normalizedEmail = email.trim().toLowerCase();
+
+  await prisma.meeting.upsert({
+    where: { id: meetingId },
+    create: { id: meetingId },
+    update: {},
+  });
+
   if (type === "joined") {
     await prisma.rosterEntry.upsert({
-      where: { email: normalizedEmail },
+      where: { meetingId_email: { meetingId, email: normalizedEmail } },
       create: {
+        meetingId,
         email: normalizedEmail,
         displayName,
         isConnected: true,
@@ -58,7 +80,7 @@ export async function applyRosterEvent(
     });
   } else {
     await prisma.rosterEntry.updateMany({
-      where: { email: normalizedEmail },
+      where: { meetingId, email: normalizedEmail },
       data: { isConnected: false, leftAt: new Date() },
     });
   }
@@ -76,6 +98,6 @@ rosterRouter.post("/connection-health", async (req, res) => {
     });
   }
   const { stale } = req.body as { stale: boolean };
-  setRosterStale(Boolean(stale));
+  setRosterStale(meetingIdParam(req), Boolean(stale));
   res.json({ ok: true });
 });

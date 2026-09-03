@@ -19,6 +19,7 @@ body {
 .app { max-width: 480px; margin: 0 auto; padding: 12px; }
 
 .loading { padding: 24px; text-align: center; color: var(--muted); }
+.loading.error { color: var(--red); font-weight: 500; }
 
 .stale-banner {
   background: #fff8c5;

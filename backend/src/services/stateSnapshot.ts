@@ -6,18 +6,26 @@ import {
 
 /**
  * The single state payload pushed to the tab over the socket (docs §5.1 —
- * the tab is never expected to poll). Also served over GET /api/state for
- * initial load / reconnect.
+ * the tab is never expected to poll). Also served over
+ * GET /api/meetings/:meetingId/state for initial load / reconnect. Scoped
+ * to one Meeting (the tenant boundary — see prisma/schema.prisma) so
+ * concurrent hearings in different Teams meetings never mix.
  */
-export async function buildStateSnapshot(rosterStale: boolean) {
+export async function buildStateSnapshot(meetingId: string, rosterStale: boolean) {
   const [judges, hearings, roster, remaps] = await Promise.all([
-    prisma.judgeOrAuxiliary.findMany({ orderBy: { role: "asc" } }),
+    prisma.judgeOrAuxiliary.findMany({ where: { meetingId }, orderBy: { role: "asc" } }),
     prisma.hearing.findMany({
+      where: { meetingId },
       include: { expectedParties: true, periods: { orderBy: { startedAt: "asc" } } },
       orderBy: { hearingNumber: "asc" },
     }),
-    prisma.rosterEntry.findMany(),
+    prisma.rosterEntry.findMany({ where: { meetingId } }),
+    // RemapMapping has no meetingId of its own — it's scoped transitively
+    // through hearingId, which is itself meeting-scoped, so filtering
+    // hearings by meetingId above is sufficient; this just fetches remaps
+    // for exactly those hearings.
     prisma.remapMapping.findMany({
+      where: { hearing: { meetingId } },
       include: { mappedToExpectedParty: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -76,6 +84,7 @@ export async function buildStateSnapshot(rosterStale: boolean) {
     }));
 
   return {
+    meetingId,
     generatedAt: new Date().toISOString(),
     rosterStale,
     judges,
