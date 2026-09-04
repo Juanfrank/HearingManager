@@ -8,7 +8,15 @@ import { externalUidOrSynthetic } from "../util/identity";
 export const judgesRouter = Router({ mergeParams: true });
 
 judgesRouter.get("/", async (req, res) => {
-  res.json(await prisma.judgeOrAuxiliary.findMany({ where: { meetingId: meetingIdParam(req) } }));
+  const judges = await prisma.judgeOrAuxiliary.findMany({
+    where: { meetingId: meetingIdParam(req) },
+    include: { emails: true },
+  });
+  // Map the child-table `emails` relation (SQL Server has no scalar-list
+  // type) back to the plain `emails: string[]` shape the frontend expects
+  // (tab/src/types.ts) — same boundary-mapping strategy as everywhere else
+  // this table is queried.
+  res.json(judges.map((j) => ({ ...j, emails: j.emails.map((e) => e.email) })));
 });
 
 judgesRouter.post("/", async (req, res) => {
@@ -29,9 +37,20 @@ judgesRouter.post("/", async (req, res) => {
   // on startup (routes/meetings.ts) before this is ever called.
   const record = await prisma.judgeOrAuxiliary.upsert({
     where: { meetingId_externalUid: { meetingId, externalUid: uid } },
-    create: { meetingId, emails: normalizedEmails, name, role, externalUid: uid },
-    update: { emails: normalizedEmails, name, role },
+    create: {
+      meetingId,
+      emails: { create: normalizedEmails.map((email) => ({ email })) },
+      name,
+      role,
+      externalUid: uid,
+    },
+    update: {
+      emails: { deleteMany: {}, create: normalizedEmails.map((email) => ({ email })) },
+      name,
+      role,
+    },
+    include: { emails: true },
   });
   await broadcastState(meetingId);
-  res.status(201).json(record);
+  res.status(201).json({ ...record, emails: record.emails.map((e) => e.email) });
 });

@@ -45,7 +45,7 @@ export async function isMeetingStaff(meetingId: string, email: string): Promise<
   if (!meetingId || !normalized) return false;
 
   const judge = await prisma.judgeOrAuxiliary.findFirst({
-    where: { meetingId, emails: { has: normalized } },
+    where: { meetingId, emails: { some: { email: normalized } } },
     select: { id: true },
   });
 
@@ -58,7 +58,7 @@ export async function isMeetingParticipant(meetingId: string, email: string): Pr
 
   const [staff, roster] = await Promise.all([
     prisma.judgeOrAuxiliary.findFirst({
-      where: { meetingId, emails: { has: normalized } },
+      where: { meetingId, emails: { some: { email: normalized } } },
       select: { id: true },
     }),
     prisma.rosterEntry.findFirst({

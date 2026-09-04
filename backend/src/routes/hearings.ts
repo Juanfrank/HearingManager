@@ -56,24 +56,31 @@ hearingsRouter.post("/", async (req, res) => {
           const normalizedEmails = p.emails.map((e) => e.toLowerCase());
           return {
             name: p.name,
-            emails: normalizedEmails,
+            emails: { create: normalizedEmails.map((email) => ({ email })) },
             role: (p.role as any) ?? "PARTY",
             externalUid: externalUidOrSynthetic(p.externalUid, normalizedEmails[0]),
           };
         }),
       },
     },
-    include: { expectedParties: true },
+    include: { expectedParties: { include: { emails: true } } },
   });
+  const hearingView = {
+    ...hearing,
+    expectedParties: hearing.expectedParties.map((p) => ({
+      ...p,
+      emails: p.emails.map((e) => e.email),
+    })),
+  };
   await logAudit({
     meetingId,
     hearingId: hearing.id,
     actorEmail: actorEmail(req),
     action: "hearing.create",
-    after: hearing,
+    after: hearingView,
   });
   await broadcastState(meetingId);
-  res.status(201).json(hearing);
+  res.status(201).json(hearingView);
 });
 
 // Notes are now personal/per-author — see routes/notes.ts

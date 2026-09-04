@@ -38,36 +38,51 @@ partiesRouter.post("/", async (req, res) => {
   // same reasoning as routes/judges.ts.
   const party = await prisma.expectedParty.upsert({
     where: { hearingId_externalUid: { hearingId, externalUid: uid } },
-    create: { hearingId, name, emails: normalizedEmails, role: role ?? "PARTY", externalUid: uid },
-    update: { name, emails: normalizedEmails, role: role ?? "PARTY" },
+    create: {
+      hearingId,
+      name,
+      emails: { create: normalizedEmails.map((email) => ({ email })) },
+      role: role ?? "PARTY",
+      externalUid: uid,
+    },
+    update: {
+      name,
+      emails: { deleteMany: {}, create: normalizedEmails.map((email) => ({ email })) },
+      role: role ?? "PARTY",
+    },
+    include: { emails: true },
   });
+  const partyView = { ...party, emails: party.emails.map((e) => e.email) };
   await logAudit({
     meetingId,
     hearingId,
     actorEmail: (req as AuthedRequest).actorEmail ?? "unknown@local",
     action: "expectedParty.create",
-    after: party,
+    after: partyView,
   });
   await broadcastState(meetingId);
-  res.status(201).json(party);
+  res.status(201).json(partyView);
 });
 
 partiesRouter.delete("/:id", async (req, res) => {
   const meetingId = meetingIdParam(req);
   const party = await prisma.expectedParty.findFirst({
     where: { id: req.params.id, hearing: { meetingId } },
+    include: { emails: true },
   });
   if (!party) {
     return res.status(404).json({ error: "party not found in this meeting" });
   }
 
+  // Cascades to the party's PartyEmail rows (schema.prisma's onDelete:
+  // Cascade) — no separate cleanup needed for the child table.
   await prisma.expectedParty.delete({ where: { id: party.id } });
   await logAudit({
     meetingId,
     hearingId: party.hearingId,
     actorEmail: (req as AuthedRequest).actorEmail ?? "unknown@local",
     action: "expectedParty.delete",
-    before: party,
+    before: { ...party, emails: party.emails.map((e) => e.email) },
   });
   await broadcastState(meetingId);
   res.json({ ok: true });

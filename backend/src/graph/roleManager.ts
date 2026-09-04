@@ -65,10 +65,10 @@ async function resolveGraphMeetingRef(meetingId: string) {
 async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole[]> {
   const [roster, judges, activeHearing, grants] = await Promise.all([
     prisma.rosterEntry.findMany({ where: { meetingId, isConnected: true } }),
-    prisma.judgeOrAuxiliary.findMany({ where: { meetingId } }),
+    prisma.judgeOrAuxiliary.findMany({ where: { meetingId }, include: { emails: true } }),
     prisma.hearing.findFirst({
       where: { meetingId, state: "ACTIVE" },
-      include: { expectedParties: true },
+      include: { expectedParties: { include: { emails: true } } },
     }),
     prisma.presenterGrant.findMany({ where: { meetingId, revokedAt: null } }),
   ]);
@@ -86,7 +86,7 @@ async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole
     // promoting only their unconnected primary email would leave the
     // roster entry they're actually connected as still stuck at attendee.
     for (const party of activeHearing.expectedParties) {
-      for (const email of party.emails) {
+      for (const { email } of party.emails) {
         if (connectedRosterEmails.has(email.toLowerCase())) {
           activeHearingPresentEmails.push(email);
         }
@@ -102,7 +102,7 @@ async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole
 
   const presenterEmails = computePresenterEmails({
     connectedEmails: roster.map((r) => r.email),
-    judges,
+    judges: judges.map((j) => ({ ...j, emails: j.emails.map((e) => e.email) })),
     activeHearingPresentEmails,
     activeGrants: grants,
   });
@@ -219,7 +219,7 @@ export async function completeHearing(
 ) {
   const hearing = await prisma.hearing.findFirstOrThrow({
     where: { id: hearingId, meetingId },
-    include: { expectedParties: true },
+    include: { expectedParties: { include: { emails: true } } },
   });
   const before = { state: hearing.state };
 
@@ -232,9 +232,13 @@ export async function completeHearing(
     prisma.rosterEntry.findMany({ where: { meetingId } }),
     prisma.remapMapping.findMany({ where: { hearingId, undoneAt: null } }),
   ]);
+  const expectedParties = hearing.expectedParties.map((p) => ({
+    ...p,
+    emails: p.emails.map((e) => e.email),
+  }));
   const attendanceAtClose = deriveHearingAttendance(
     hearingId,
-    hearing.expectedParties,
+    expectedParties,
     roster,
     remaps,
   );

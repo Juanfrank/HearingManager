@@ -24,8 +24,24 @@ export async function logAudit(entry: {
       hearingId: entry.hearingId ?? undefined,
       actorEmail: entry.actorEmail,
       action: entry.action,
-      before: entry.before === undefined ? undefined : (entry.before as any),
-      after: entry.after === undefined ? undefined : (entry.after as any),
+      // before/after are plain NVarChar(Max) columns, not Json — SQL
+      // Server's Prisma connector has no Json column type (docs/README.md
+      // "Database"). JSON.stringify here is the one place this app
+      // serializes them; parseAuditJson below is the one place it parses
+      // them back.
+      before: entry.before === undefined ? undefined : JSON.stringify(entry.before),
+      after: entry.after === undefined ? undefined : JSON.stringify(entry.after),
     },
   });
+}
+
+/** Parses an AuditLogEntry.before/after column back into the object that
+ * was passed to logAudit() — null/undefined pass through unchanged. */
+export function parseAuditJson(value: string | null | undefined): any {
+  if (value == null) return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }

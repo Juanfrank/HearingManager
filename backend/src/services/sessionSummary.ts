@@ -1,7 +1,7 @@
 import { prisma } from "../db";
 import { deriveHearingAttendance } from "./statusDerivation";
 import { sendChatMessage } from "../graph/client";
-import { logAudit } from "./auditLog";
+import { logAudit, parseAuditJson } from "./auditLog";
 import { formatDuration } from "../util/formatDuration";
 import { t } from "../i18n";
 
@@ -53,7 +53,7 @@ async function buildHearingBases(meetingId: string): Promise<HearingBase[]> {
     prisma.hearing.findMany({
       where: { meetingId },
       include: {
-        expectedParties: true,
+        expectedParties: { include: { emails: true } },
         periods: { orderBy: { startedAt: "asc" } },
       },
       orderBy: { hearingNumber: "asc" },
@@ -71,7 +71,7 @@ async function buildHearingBases(meetingId: string): Promise<HearingBase[]> {
           where: { hearingId: h.id, action: "hearing.complete" },
           orderBy: { createdAt: "desc" },
         });
-        const snap = (closeEntry?.after as any)?.attendanceAtClose;
+        const snap = parseAuditJson(closeEntry?.after)?.attendanceAtClose;
         if (snap) {
           const snapParties = snap.parties as {
             name: string;
@@ -95,7 +95,11 @@ async function buildHearingBases(meetingId: string): Promise<HearingBase[]> {
       const remaps = await prisma.remapMapping.findMany({
         where: { hearingId: h.id, undoneAt: null },
       });
-      const live = deriveHearingAttendance(h.id, h.expectedParties, roster, remaps);
+      const expectedParties = h.expectedParties.map((p) => ({
+        ...p,
+        emails: p.emails.map((e) => e.email),
+      }));
+      const live = deriveHearingAttendance(h.id, expectedParties, roster, remaps);
       const label =
         h.state === "ACTIVE"
           ? t("sessionSummary.labelActive")
@@ -143,7 +147,7 @@ async function buildAttendanceLog(meetingId: string): Promise<AttendanceLogPerso
     }
     // Keep the most recent displayName seen for this email.
     entry.displayName = e.displayName;
-    entry.events.push({ type: e.type, occurredAt: e.occurredAt });
+    entry.events.push({ type: e.type as "JOINED" | "LEFT", occurredAt: e.occurredAt });
   }
   return Array.from(byEmail.values());
 }
@@ -218,7 +222,7 @@ function formatAuditLogBlock(lines: string[]): string {
 export async function sendSessionSummaries(meetingId: string, endedByEmail: string) {
   const [bases, judges, notes, attendanceLog, auditLines] = await Promise.all([
     buildHearingBases(meetingId),
-    prisma.judgeOrAuxiliary.findMany({ where: { meetingId } }),
+    prisma.judgeOrAuxiliary.findMany({ where: { meetingId }, include: { emails: true } }),
     prisma.hearingNote.findMany({
       where: { hearing: { meetingId } },
       select: { hearingId: true, authorEmail: true, text: true },
@@ -236,7 +240,8 @@ export async function sendSessionSummaries(meetingId: string, endedByEmail: stri
     // emails — whichever one Teams SSO resolved as their actorEmail at
     // the time they typed it (auth/verifyTeamsToken.ts), not necessarily
     // their first/primary listed email — so match against the whole set.
-    const judgeEmails = new Set(judge.emails.map((e) => e.toLowerCase()));
+    const judgeEmailList = judge.emails.map((e) => e.email);
+    const judgeEmails = new Set(judgeEmailList.map((e) => e.toLowerCase()));
     const sections = bases.map((b) => {
       const myNote = notes.find(
         (n) => n.hearingId === b.hearingId && judgeEmails.has(n.authorEmail.toLowerCase()),
@@ -266,7 +271,7 @@ export async function sendSessionSummaries(meetingId: string, endedByEmail: stri
 
     const text = `${t("sessionSummary.title")}\n\n${bodyBlocks.join("\n\n")}`;
 
-    const primaryEmail = judge.emails[0];
+    const primaryEmail = judgeEmailList[0];
     await sendChatMessage(primaryEmail, "system:session-summary", text);
     recipients.push(primaryEmail);
   }

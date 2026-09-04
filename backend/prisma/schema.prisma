@@ -2,48 +2,27 @@
 // See docs/README.md section 4 for rationale.
 
 datasource db {
-  // Postgres is the target for production (low-volume, high-integrity data).
-  // For local dev without a Postgres instance, set DATABASE_URL to a
-  // "file:./dev.db" sqlite path and change provider to "sqlite" — see
-  // backend/.env.example.
-  provider = "postgresql"
+  // SQL Server — the organization's own instance, no external/paid database
+  // service required (docs/README.md "Database"). Three things Postgres
+  // gave us for free that SQL Server's Prisma connector doesn't support at
+  // all, each worked around below:
+  //   - No scalar-list/array type → the *Email child-table models
+  //     (JudgeEmail/PartyEmail) stand in for `emails String[]` — see the
+  //     comments on JudgeOrAuxiliary/ExpectedParty.
+  //   - No `Json` column type → AuditLogEntry.before/after are plain
+  //     `String? @db.NVarChar(Max)` holding JSON.stringify'd text;
+  //     services/auditLog.ts does the stringify/parse at the boundary.
+  //   - No native enum type → every enum below became a plain `String`
+  //     field holding the same literal values (e.g. "ACTIVE", "PARTY");
+  //     nothing in the TS code imported Prisma's enum types directly (it
+  //     already used string-literal unions everywhere), so this is a
+  //     schema-only change.
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
-}
-
-enum HearingState {
-  // Explicit lifecycle states (distinct from the *derived* ready/incomplete/
-  // no_show attendance status — see services/statusDerivation.ts).
-  PENDING
-  ACTIVE
-  COMPLETED
-}
-
-enum PartyRole {
-  PARTY
-  COUNSEL
-  WITNESS
-  OTHER
-}
-
-enum JudgeRole {
-  JUDGE
-  PRESIDING_JUDGE
-  SECRETARY
-  OTHER_OFFICER
-}
-
-enum RemapTargetType {
-  EXISTING_PARTY
-  NEW_PARTY
-}
-
-enum RosterEventType {
-  JOINED
-  LEFT
 }
 
 // The tenant boundary: one Meeting per live Teams meeting (docs §1 — "one
@@ -57,11 +36,11 @@ enum RosterEventType {
 // exist here (roster events flowing, hearings being tracked) before that
 // resolution has happened, and GRAPH_MODE=mock never needs it at all.
 model Meeting {
-  id              String   @id
+  id              String    @id
   organizerUserId String?
   onlineMeetingId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // Set once by the "End session" action (routes/session.ts) — sends every
   // judge/auxiliary a personalized closure summary, see services/
   // sessionSummary.ts. Re-ending an already-ended session is rejected.
@@ -77,18 +56,24 @@ model Meeting {
 }
 
 model Hearing {
-  id            String         @id @default(cuid())
+  id            String    @id @default(cuid())
   meetingId     String
-  meeting       Meeting        @relation(fields: [meetingId], references: [id])
+  meeting       Meeting   @relation(fields: [meetingId], references: [id])
   hearingNumber Int
-  state         HearingState   @default(PENDING)
+  // "PENDING" | "ACTIVE" | "COMPLETED" — explicit lifecycle states
+  // (distinct from the *derived* ready/incomplete/no_show attendance
+  // status — see services/statusDerivation.ts). Was a Prisma enum before
+  // the SQL Server switch (datasource db's comment above); every call site
+  // already compared against these same string literals, so this is a
+  // schema-only change.
+  state         String    @default("PENDING")
   // From the case-management system's daily feed (services/cmsImport.ts) —
   // when this hearing was scheduled for, not when it actually ran (that's
   // HearingPeriod). Null for hearings created by other means (routes/
   // hearings.ts, routes/provision.ts without a date).
   scheduledAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   expectedParties ExpectedParty[]
   periods         HearingPeriod[]
@@ -107,7 +92,7 @@ model Hearing {
 model HearingNote {
   id          String   @id @default(cuid())
   hearingId   String
-  hearing     Hearing  @relation(fields: [hearingId], references: [id])
+  hearing     Hearing  @relation(fields: [hearingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   authorEmail String
   text        String   @default("")
   updatedAt   DateTime @updatedAt
@@ -139,7 +124,7 @@ model PresenterGrant {
 model HearingPeriod {
   id        String    @id @default(cuid())
   hearingId String
-  hearing   Hearing   @relation(fields: [hearingId], references: [id])
+  hearing   Hearing   @relation(fields: [hearingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   startedAt DateTime  @default(now())
   endedAt   DateTime?
 
@@ -156,18 +141,35 @@ model HearingPeriod {
 // when present, it's what re-imports match against (see @@unique below)
 // rather than name/email, which can legitimately change between imports.
 model ExpectedParty {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   hearingId   String
-  hearing     Hearing   @relation(fields: [hearingId], references: [id])
+  hearing     Hearing      @relation(fields: [hearingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name        String
-  emails      String[]
-  role        PartyRole @default(PARTY)
+  emails      PartyEmail[]
+  // "PARTY" | "COUNSEL" | "WITNESS" | "OTHER" — was a Prisma enum, see
+  // datasource db's comment above.
+  role        String       @default("PARTY")
   externalUid String?
 
   remapsTargeting RemapMapping[]
 
   @@unique([hearingId, externalUid])
   @@index([hearingId])
+}
+
+// Child table standing in for what would be `emails String[]` on Postgres —
+// SQL Server has no scalar-list type. Every Prisma call site that reads or
+// writes ExpectedParty.emails maps to/from a plain `string[]` immediately
+// at the query boundary (see services/statusDerivation.ts's ExpectedPartyLike
+// for the shape everything else in the app still operates on).
+model PartyEmail {
+  id              String        @id @default(cuid())
+  expectedPartyId String
+  expectedParty   ExpectedParty @relation(fields: [expectedPartyId], references: [id], onDelete: Cascade)
+  email           String
+
+  @@index([expectedPartyId])
+  @@index([email])
 }
 
 // Live roster, fed exclusively by bot roster events (join/leave). Source of
@@ -199,29 +201,33 @@ model RosterEntry {
 // summary (services/sessionSummary.ts) print a full connection log per
 // person, including general public.
 model RosterConnectionEvent {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
   meetingId   String
-  meeting     Meeting          @relation(fields: [meetingId], references: [id])
+  meeting     Meeting  @relation(fields: [meetingId], references: [id])
   email       String
   displayName String
-  type        RosterEventType
-  occurredAt  DateTime         @default(now())
+  // "JOINED" | "LEFT" — was a Prisma enum, see datasource db's comment
+  // above.
+  type        String
+  occurredAt  DateTime @default(now())
 
   @@index([meetingId])
   @@index([meetingId, email])
 }
 
 model RemapMapping {
-  id                    String          @id @default(cuid())
-  rosterEmail           String
-  mappedToType          RemapTargetType
+  id                      String         @id @default(cuid())
+  rosterEmail             String
+  // "EXISTING_PARTY" | "NEW_PARTY" — was a Prisma enum, see datasource db's
+  // comment above.
+  mappedToType            String
   mappedToExpectedPartyId String?
-  mappedToExpectedParty  ExpectedParty?  @relation(fields: [mappedToExpectedPartyId], references: [id])
-  newPartyName          String?
-  hearingId             String
-  hearing               Hearing         @relation(fields: [hearingId], references: [id])
-  createdAt             DateTime        @default(now())
-  undoneAt              DateTime?
+  mappedToExpectedParty   ExpectedParty? @relation(fields: [mappedToExpectedPartyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  newPartyName            String?
+  hearingId               String
+  hearing                 Hearing        @relation(fields: [hearingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdAt               DateTime       @default(now())
+  undoneAt                DateTime?
 
   @@index([hearingId])
   @@index([rosterEmail])
@@ -234,16 +240,31 @@ model RemapMapping {
 // and externalUid (the CMS's PersonUID, when known) is what re-imports
 // match against.
 model JudgeOrAuxiliary {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   meetingId   String
-  meeting     Meeting   @relation(fields: [meetingId], references: [id])
-  emails      String[]
+  meeting     Meeting      @relation(fields: [meetingId], references: [id])
+  emails      JudgeEmail[]
   name        String
-  role        JudgeRole
+  // "JUDGE" | "PRESIDING_JUDGE" | "SECRETARY" | "OTHER_OFFICER" — was a
+  // Prisma enum, see datasource db's comment above.
+  role        String
   externalUid String?
 
   @@unique([meetingId, externalUid])
   @@index([meetingId])
+}
+
+// Child table standing in for what would be `emails String[]` on Postgres —
+// see the identical comment on PartyEmail above; same boundary-mapping
+// strategy applies to every JudgeOrAuxiliary.emails call site.
+model JudgeEmail {
+  id                 String           @id @default(cuid())
+  judgeOrAuxiliaryId String
+  judgeOrAuxiliary   JudgeOrAuxiliary @relation(fields: [judgeOrAuxiliaryId], references: [id], onDelete: Cascade)
+  email              String
+
+  @@index([judgeOrAuxiliaryId])
+  @@index([email])
 }
 
 // Every role change, remap, undo, and status transition — actor, timestamp,
@@ -251,16 +272,24 @@ model JudgeOrAuxiliary {
 // conducted; never delete rows from this table. meetingId is set even for
 // entries without a hearingId (e.g. a message send not tied to one hearing)
 // so the audit trail stays scoped and queryable per meeting too.
+//
+// before/after hold JSON.stringify'd text (SQL Server's Prisma connector has
+// no `Json` column type — see datasource db's comment above), stringified/
+// parsed exclusively by services/auditLog.ts so nothing else in the app
+// needs to know the column is a string underneath. @db.NVarChar(Max)
+// because plain NVarChar on SQL Server defaults to a 1000-char cap, which
+// would silently truncate a larger before/after snapshot (e.g. a hearing's
+// full attendanceAtClose).
 model AuditLogEntry {
   id         String   @id @default(cuid())
   meetingId  String?
-  meeting    Meeting? @relation(fields: [meetingId], references: [id])
+  meeting    Meeting? @relation(fields: [meetingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   hearingId  String?
-  hearing    Hearing? @relation(fields: [hearingId], references: [id])
+  hearing    Hearing? @relation(fields: [hearingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   actorEmail String
   action     String
-  before     Json?
-  after      Json?
+  before     String?  @db.NVarChar(Max)
+  after      String?  @db.NVarChar(Max)
   createdAt  DateTime @default(now())
 
   @@index([meetingId])

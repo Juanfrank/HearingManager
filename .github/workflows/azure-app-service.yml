@@ -8,8 +8,9 @@ name: Deploy to Azure App Service
 # need the sibling tab/ folder to exist at runtime.
 #
 # One-time setup before this workflow can deploy anything:
-#   1. Create the App Service (Linux, Node 20+) and the Azure Database
-#      for PostgreSQL instance — see docs/README.md.
+#   1. Create the App Service (Linux, Node 20+) and point it at a reachable
+#      SQL Server instance (the organization's own — no Azure database
+#      service required) — see docs/README.md.
 #   2. az webapp deployment list-publishing-profiles --name <app> \
 #        --resource-group <rg> --xml > profile.xml
 #      then paste profile.xml's contents into this repo's

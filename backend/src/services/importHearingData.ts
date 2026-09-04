@@ -78,8 +78,21 @@ export async function importHearingData(
     const uid = externalUidOrSynthetic(j.externalUid, normalizedEmails[0]);
     await prisma.judgeOrAuxiliary.upsert({
       where: { meetingId_externalUid: { meetingId, externalUid: uid } },
-      create: { meetingId, emails: normalizedEmails, name: j.name, role: j.role, externalUid: uid },
-      update: { emails: normalizedEmails, name: j.name, role: j.role },
+      create: {
+        meetingId,
+        emails: { create: normalizedEmails.map((email) => ({ email })) },
+        name: j.name,
+        role: j.role,
+        externalUid: uid,
+      },
+      // Prisma has no "replace array" primitive for a relation (unlike
+      // Postgres's scalar-list assignment) — delete and recreate the child
+      // rows so a re-import's email list fully replaces the previous one.
+      update: {
+        emails: { deleteMany: {}, create: normalizedEmails.map((email) => ({ email })) },
+        name: j.name,
+        role: j.role,
+      },
     });
     judgesUpserted.push(uid);
   }
@@ -110,7 +123,7 @@ export async function importHearingData(
             const normalizedEmails = p.emails.map((e) => e.toLowerCase());
             return {
               name: p.name,
-              emails: normalizedEmails,
+              emails: { create: normalizedEmails.map((email) => ({ email })) },
               role: p.role ?? "PARTY",
               externalUid: externalUidOrSynthetic(p.externalUid, normalizedEmails[0]),
             };

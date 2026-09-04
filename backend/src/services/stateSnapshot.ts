@@ -18,10 +18,17 @@ import {
 export async function buildStateSnapshot(meetingId: string, rosterStale: boolean) {
   const [meeting, judges, hearings, roster, remaps, presenterGrants] = await Promise.all([
     prisma.meeting.findUnique({ where: { id: meetingId } }),
-    prisma.judgeOrAuxiliary.findMany({ where: { meetingId }, orderBy: { role: "asc" } }),
+    prisma.judgeOrAuxiliary.findMany({
+      where: { meetingId },
+      include: { emails: true },
+      orderBy: { role: "asc" },
+    }),
     prisma.hearing.findMany({
       where: { meetingId },
-      include: { expectedParties: true, periods: { orderBy: { startedAt: "asc" } } },
+      include: {
+        expectedParties: { include: { emails: true } },
+        periods: { orderBy: { startedAt: "asc" } },
+      },
       orderBy: { hearingNumber: "asc" },
     }),
     prisma.rosterEntry.findMany({ where: { meetingId } }),
@@ -37,7 +44,19 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
     prisma.presenterGrant.findMany({ where: { meetingId, revokedAt: null } }),
   ]);
 
-  const hearingViews = hearings.map((h) => {
+  // Map the child-table `emails` relation (SQL Server has no scalar-list
+  // type) back to the plain `emails: string[]` shape the whole rest of the
+  // app — statusDerivation.ts, presenterRules.ts, and their tests — still
+  // operates on, right at this query boundary.
+  const hearingsWithPlainEmails = hearings.map((h) => ({
+    ...h,
+    expectedParties: h.expectedParties.map((p) => ({
+      ...p,
+      emails: p.emails.map((e) => e.email),
+    })),
+  }));
+
+  const hearingViews = hearingsWithPlainEmails.map((h) => {
     const attendance = deriveHearingAttendance(
       h.id,
       h.expectedParties,
@@ -74,18 +93,22 @@ export async function buildStateSnapshot(meetingId: string, rosterStale: boolean
   const connectedEmails = new Set(
     roster.filter((r) => r.isConnected).map((r) => r.email.toLowerCase()),
   );
-  const judgeViews = judges.map((j) => ({
-    ...j,
-    // Display/messaging email — the first of their known emails; presence
-    // is checked against all of them, not just this one (docs/README.md,
-    // "Multi-email matching").
-    email: j.emails[0] ?? "",
-    connected: j.emails.some((e) => connectedEmails.has(e.toLowerCase())),
-  }));
+  const judgeViews = judges.map((j) => {
+    const emails = j.emails.map((e) => e.email);
+    return {
+      ...j,
+      // Display/messaging email — the first of their known emails; presence
+      // is checked against all of them, not just this one (docs/README.md,
+      // "Multi-email matching").
+      emails,
+      email: emails[0] ?? "",
+      connected: emails.some((e) => connectedEmails.has(e.toLowerCase())),
+    };
+  });
 
   const generalPublic = generalPublicEntries(
     roster,
-    hearings.flatMap((h) => h.expectedParties),
+    hearingsWithPlainEmails.flatMap((h) => h.expectedParties),
     remaps,
   ).map((r) => ({ email: r.email, displayName: (r as any).displayName }));
 

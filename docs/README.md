@@ -33,8 +33,13 @@ tab/        React tab UI (Teams JS SDK for meeting/user context,
 - **Backend** (`backend/`): holds hearings/parties/roster/remap/audit
   state, performs all Microsoft Graph calls, pushes live updates to the tab
   over a socket.
-- **Database**: Postgres via Prisma (`backend/prisma/schema.prisma`) — low
-  volume, high integrity data, not a scale problem.
+- **Database**: SQL Server via Prisma (`backend/prisma/schema.prisma`) —
+  low volume, high integrity data, not a scale problem. Runs on the
+  organization's own SQL Server instance — no external/paid database
+  service required. SQL Server's Prisma connector lacks a few things
+  Postgres has natively (a scalar-list/array type, `Json` columns, native
+  `enum`), each worked around in the schema — see its `datasource db`
+  comment for the specifics.
 
 ### Multi-meeting: one shared backend, many concurrent meetings
 
@@ -576,18 +581,25 @@ the app changes.
 cd backend
 cp .env.example .env         # fill in DATABASE_URL at minimum
 npm install
-npx prisma migrate dev       # requires a reachable Postgres — see below
+npx prisma db push           # requires a reachable SQL Server — see below
 npm run dev                  # http://localhost:3978
 ```
 
-`prisma/schema.prisma`'s `provider` is `postgresql` — the production
-target. Prisma's SQLite connector does **not** support `enum` or `Json`
-columns, both of which this schema uses (hearing/party/judge roles, and
-the audit log's before/after snapshots), so a plain SQLite swap doesn't
-work here. For local dev, run a real (but disposable) local Postgres
-instead — e.g. `pg_ctlcluster <version> main start` if installed locally,
-or `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16` —
-and point `DATABASE_URL` at it. No org-wide Postgres server needed.
+`prisma/schema.prisma`'s `provider` is `sqlserver` — the production target,
+pointed at the organization's own instance (no external/paid database
+service required). SQLite is **not** an option here: its Prisma connector
+supports neither the array-of-emails relation this schema needs nor a
+scalar-list workaround cheaply, and (more fundamentally) this schema
+avoids `enum`/`Json` column types specifically *because* SQL Server's own
+connector doesn't support them either — see `datasource db`'s comment for
+the full list of SQL-Server-specific workarounds. For local dev without
+access to the org's instance, run SQL Server itself in a disposable
+container — `docker run -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='<a-strong-
+password>' -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest` — and
+point `DATABASE_URL` at `localhost:1433` (see `.env.example` for the exact
+connection-string format). `prisma db push` (rather than `migrate dev`) is
+the normal flow here since there's no committed migration history yet —
+switch to `migrate dev`/`migrate deploy` once one exists.
 
 With `GRAPH_MODE=mock` and `AUTH_MODE=dev-bypass` (both defaults in
 `.env.example`), you can drive the whole hearing lifecycle without a live
@@ -649,9 +661,11 @@ server instead), so nothing needs an env-var override either way.
 **One-time setup** (Azure CLI or portal):
 1. **App Service**: Linux, Node 20+, e.g.
    `az webapp up --name <app> --resource-group <rg> --runtime "NODE:20-lts"`.
-2. **Database**: Azure Database for PostgreSQL Flexible Server (the schema
-   needs real Postgres — see `prisma/schema.prisma`'s comment on why
-   SQLite doesn't work here, `enum`/`Json` columns).
+2. **Database**: the organization's own SQL Server instance — no Azure
+   database service (paid or otherwise) is required. Any reachable SQL
+   Server the deploying org already runs works: point `DATABASE_URL` at it
+   (see `backend/.env.example` for the connection-string format) with a
+   login that can create/alter tables in the target database.
 3. **WebSockets**: Socket.IO needs this explicitly enabled —
    `az webapp config set --name <app> --resource-group <rg> --web-sockets-enabled true`.
    "Always On" is also worth enabling so the process doesn't idle out
