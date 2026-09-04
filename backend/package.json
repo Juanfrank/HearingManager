@@ -4,13 +4,20 @@
   "private": true,
   "description": "Backend service for the Judiciary Hearing Administrator Teams app — holds application state, derives hearing status, performs Microsoft Graph calls, and pushes live updates to the tab.",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build:tab": "npm --prefix ../tab install && npm --prefix ../tab run build",
+    "copy:tab": "node scripts/copy-tab-dist.js",
+    "build": "npm run build:tab && npm run copy:tab && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test": "vitest run"
+    "prisma:deploy": "prisma migrate deploy",
+    "test": "vitest run",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@microsoft/microsoft-graph-client": "^3.0.7",

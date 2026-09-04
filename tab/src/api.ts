@@ -1,6 +1,12 @@
 import { getAuthToken, getMeetingId } from "./teamsContext";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3978/api";
+// Relative by default — works unmodified in production (backend/src/
+// index.ts serves this built tab as static files, so "/api" resolves to
+// the same origin/App Service the tab was loaded from) AND in local dev
+// (vite.config.ts proxies "/api" to the backend dev server on :3978, no
+// CORS involved either way). Only set VITE_API_BASE if the tab is ever
+// deployed pointing at a backend on a genuinely different origin.
+const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 // Dev-only fallback: when running outside Teams (no SSO token available),
 // ?actorEmail= in the URL is sent as x-actor-email instead — only honored

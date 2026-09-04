@@ -6,6 +6,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 53000,
+    // Lets api.ts/socket.ts default to relative, same-origin paths ("/api",
+    // same-origin socket) everywhere — in production that's genuinely
+    // same-origin (backend/src/index.ts serves this build as static
+    // files), and here in dev it's proxied to the backend dev server
+    // instead, so neither path needs env-var overrides or CORS.
+    proxy: {
+      "/api": { target: "http://localhost:3978", changeOrigin: true },
+      "/socket.io": { target: "http://localhost:3978", ws: true, changeOrigin: true },
+    },
   },
   build: {
     rollupOptions: {

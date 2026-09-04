@@ -2,7 +2,11 @@ import { io, Socket } from "socket.io-client";
 import type { StateSnapshot } from "./types";
 import { getAuthToken, getMeetingId } from "./teamsContext";
 
-const SOCKET_BASE = import.meta.env.VITE_SOCKET_BASE ?? "http://localhost:3978";
+// Empty by default — same-origin (see api.ts's API_BASE for why: co-hosted
+// in production, proxied by Vite in dev). socket.io-client connects to the
+// current page's origin when given no URL at all, so this is passed
+// through omitted rather than as "".
+const SOCKET_BASE = import.meta.env.VITE_SOCKET_BASE ?? "";
 
 let socket: Socket | null = null;
 
@@ -34,13 +38,21 @@ export async function subscribeToState(
   const token = await getAuthToken();
   const devEmail = devActorEmailOverride();
 
-  socket = io(SOCKET_BASE, {
-    transports: ["websocket"],
-    auth: {
-      meetingId,
-      ...(token ? { token } : devEmail ? { devActorEmail: devEmail } : {}),
-    },
-  });
+  socket = SOCKET_BASE
+    ? io(SOCKET_BASE, {
+        transports: ["websocket"],
+        auth: {
+          meetingId,
+          ...(token ? { token } : devEmail ? { devActorEmail: devEmail } : {}),
+        },
+      })
+    : io({
+        transports: ["websocket"],
+        auth: {
+          meetingId,
+          ...(token ? { token } : devEmail ? { devActorEmail: devEmail } : {}),
+        },
+      });
   socket.on("state", onState);
   return () => {
     socket?.off("state", onState);

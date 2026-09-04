@@ -1,0 +1,73 @@
+name: Deploy to Azure App Service
+
+# Builds tab/ + backend/ (backend's `npm run build` builds and copies the
+# tab into backend/public — see backend/scripts/copy-tab-dist.js and
+# docs/README.md's "Deploying to Azure App Service"), then deploys
+# backend/ alone as the App Service artifact: it's self-contained once
+# built (dist/, public/, prisma/, production node_modules) and doesn't
+# need the sibling tab/ folder to exist at runtime.
+#
+# One-time setup before this workflow can deploy anything:
+#   1. Create the App Service (Linux, Node 20+) and the Azure Database
+#      for PostgreSQL instance — see docs/README.md.
+#   2. az webapp deployment list-publishing-profiles --name <app> \
+#        --resource-group <rg> --xml > profile.xml
+#      then paste profile.xml's contents into this repo's
+#      Settings -> Secrets and variables -> Actions as
+#      AZURE_WEBAPP_PUBLISH_PROFILE.
+#   3. Replace AZURE_WEBAPP_NAME below with the real App Service name.
+#   4. Set DATABASE_URL, MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD,
+#      MICROSOFT_APP_TENANT_ID, AUTH_MODE=teams-sso, GRAPH_MODE=mock (or
+#      real once wired up), TAB_HOSTNAME, PROVISIONING_API_KEYS etc. as
+#      App Service Application Settings (portal, or `az webapp config
+#      appsettings set`) — never in this repo. This workflow does not
+#      touch secrets at all; App Service injects them as env vars.
+#   5. Enable WebSockets (Socket.IO needs it):
+#      az webapp config set --name <app> --resource-group <rg> \
+#        --web-sockets-enabled true
+#   6. Apply Prisma migrations against the production database once,
+#      separately from this workflow (e.g. `npx prisma migrate deploy`
+#      run from a machine that can reach DATABASE_URL, or an App Service
+#      SSH/Kudu console) — this workflow builds and deploys code only.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  AZURE_WEBAPP_NAME: CHANGE-ME-hearing-manager
+  NODE_VERSION: "20"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install tab dependencies
+        working-directory: tab
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Build (tab -> backend/public, then compile backend)
+        working-directory: backend
+        run: npm run build
+
+      - name: Prune backend to production dependencies
+        working-directory: backend
+        run: npm prune --omit=dev
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend

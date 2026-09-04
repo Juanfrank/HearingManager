@@ -523,6 +523,70 @@ and sends `x-actor-email` instead, so the backend must also be running with
 `AUTH_MODE=dev-bypass` for this to work. Without `?meetingId=`, the tab
 shows an explicit error rather than a blank dashboard — see App.tsx.
 
+## Deploying to Azure App Service
+
+**Topology: one App Service, one hostname, for the tab + REST API + bot
+messaging endpoint + Socket.IO together** — not a separate static host for
+the tab. `backend/src/index.ts` serves `tab/`'s production build as static
+files (`express.static`, mounted after every `/api` route so it can never
+shadow one) whenever `backend/public/` exists; `npm run build`
+(`backend/package.json`) builds `tab/` and copies its `dist/` there via
+`backend/scripts/copy-tab-dist.js`, then compiles the backend itself —
+`backend/` alone is the deployable unit afterward, self-contained, not
+needing the sibling `tab/` folder at runtime. This is also why
+`tab/src/api.ts`/`socket.ts` default to relative, same-origin paths
+(`"/api"`, no explicit socket host) rather than `localhost:3978` — that
+default is correct in production (same origin) and in local dev
+(`tab/vite.config.ts` proxies `/api` and `/socket.io` to the backend dev
+server instead), so nothing needs an env-var override either way.
+
+**One-time setup** (Azure CLI or portal):
+1. **App Service**: Linux, Node 20+, e.g.
+   `az webapp up --name <app> --resource-group <rg> --runtime "NODE:20-lts"`.
+2. **Database**: Azure Database for PostgreSQL Flexible Server (the schema
+   needs real Postgres — see `prisma/schema.prisma`'s comment on why
+   SQLite doesn't work here, `enum`/`Json` columns).
+3. **WebSockets**: Socket.IO needs this explicitly enabled —
+   `az webapp config set --name <app> --resource-group <rg> --web-sockets-enabled true`.
+   "Always On" is also worth enabling so the process doesn't idle out
+   between requests.
+4. **Secrets, as Application Settings — never in this repo.** `DATABASE_URL`,
+   `MICROSOFT_APP_ID`/`MICROSOFT_APP_PASSWORD`/`MICROSOFT_APP_TENANT_ID`,
+   `AUTH_MODE=teams-sso`, `TAB_HOSTNAME` (now the App Service's own
+   hostname, e.g. `<app>.azurewebsites.net`, since tab and backend share
+   one origin), `PROVISIONING_API_KEYS`, etc. — set via
+   `az webapp config appsettings set` or the portal's Configuration blade,
+   which App Service injects as ordinary env vars at runtime (encrypted at
+   rest, never checked into git the way a plaintext `.env` would be).
+   Prefer a certificate-backed or Key-Vault-referenced credential over a
+   long-lived client secret where the integration supports it.
+5. **Migrations**: run `npx prisma migrate deploy` (not `migrate dev`,
+   which is interactive) against the production `DATABASE_URL` once per
+   schema change — from CI, a one-off Kudu/SSH console command, or any
+   machine that can reach the database. `backend/package.json`'s
+   `prisma:deploy` script wraps this. Not run automatically by the deploy
+   workflow below on purpose — a migration is a deliberate, reviewed step,
+   not a side effect of shipping code.
+6. **`GET /healthz`** — unauthenticated, mounted before `requireTeamsUser`
+   — wire it up as the App Service health-check path if you want automatic
+   unhealthy-instance restarts.
+
+**CI/CD**: `.github/workflows/azure-app-service.yml` builds `tab/` +
+`backend/` on every push to `main`, prunes dev dependencies, and deploys
+`backend/` via `azure/webapps-deploy`. Needs one repo secret
+(`AZURE_WEBAPP_PUBLISH_PROFILE`, from
+`az webapp deployment list-publishing-profiles --xml`) and the app name
+filled in at the top of the workflow file — see the comments in that file
+for the full one-time checklist.
+
+**After deploying**: `manifest/manifest.json`'s placeholder host
+(`changeme.example.com`, three places — see `manifest/README.md`) becomes
+the App Service hostname (or a custom domain pointed at it), and the bot's
+messaging endpoint in its Entra/Bot Framework registration becomes
+`https://<that-host>/api/messages/teams` — same origin as everything else
+now, one less moving piece than the two-host (separate tab host + bot
+endpoint) topology this was originally written against.
+
 ## Build-order status
 
 Per the original build instructions, in order:

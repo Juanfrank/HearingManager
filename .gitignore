@@ -5,3 +5,5 @@ dist/
 backend/prisma/dev.db
 .DS_Store
 manifest/*.zip
+tab/dist/
+backend/public/

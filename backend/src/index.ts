@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import http from "http";
+import path from "path";
+import fs from "fs";
 import { CloudAdapter, ConfigurationBotFrameworkAuthentication } from "botbuilder";
 import { hearingsRouter } from "./routes/hearings";
 import { partiesRouter } from "./routes/parties";
@@ -28,6 +30,13 @@ const TAB_ORIGIN = process.env.TAB_ORIGIN ?? "http://localhost:53000";
 
 app.use(cors({ origin: TAB_ORIGIN }));
 app.use(express.json());
+
+// Unauthenticated on purpose — Azure App Service (and any other platform
+// health probe / "Always On" ping) needs this reachable with no token,
+// before requireTeamsUser is mounted below.
+app.get("/healthz", (_req, res) => {
+  res.json({ ok: true });
+});
 
 // Bot Framework endpoint — registered BEFORE requireTeamsUser below.
 // Bot Framework activities carry their own JWT (validated by
@@ -102,6 +111,24 @@ app.use("/api/meetings/:meetingId", grantsRouter);
 app.use("/api/meetings/:meetingId", participantsRouter);
 app.use("/api/meetings/:meetingId", sessionRouter);
 app.use("/api/meetings/:meetingId", meetingsRouter);
+
+// Serves the tab's production build (index.html + config.html + assets)
+// so ONE deployment — one App Service, one hostname — can host the tab,
+// the REST API, the bot messaging endpoint, and Socket.IO together;
+// manifest.json's contentUrl/validDomains then only need that single
+// hostname. `npm run build` (backend/package.json) builds tab/ and copies
+// its output here via scripts/copy-tab-dist.js — this directory doesn't
+// exist in a plain `npm run dev` checkout, so serving it is opt-in based
+// on whether that build step has actually run, not a hard dependency.
+// Mounted after every /api route: Express falls through to a genuine
+// 404 for anything under /api that doesn't match, rather than this
+// static middleware silently swallowing it.
+const TAB_PUBLIC_DIR = path.join(__dirname, "..", "public");
+if (fs.existsSync(TAB_PUBLIC_DIR)) {
+  app.use(express.static(TAB_PUBLIC_DIR));
+} else {
+  console.log("[static] backend/public not found — skipping tab static serving (run `npm run build` to produce it)");
+}
 
 const httpServer = http.createServer(app);
 initWs(httpServer, TAB_ORIGIN);
