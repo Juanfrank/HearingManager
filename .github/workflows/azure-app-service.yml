@@ -36,7 +36,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  AZURE_WEBAPP_NAME: CHANGE-ME-hearing-manager
+  AZURE_WEBAPP_NAME: LEIA-Audiencias
   NODE_VERSION: "20"
 
 jobs:
