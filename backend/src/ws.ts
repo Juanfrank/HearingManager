@@ -25,9 +25,11 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
   // tab/src/socket.ts for how it's resolved (Teams meeting context).
   //
   // Also checks meeting MEMBERSHIP, not just identity — an authenticated
-  // token only proves "a real signed-in user of this app," not "belongs to
-  // THIS meeting." Without this, any signed-in user could connect with an
-  // arbitrary meetingId and receive another meeting's live participant
+  // token only proves "a real signed-in user of this app," not "one of
+  // THIS meeting's judges/auxiliaries" (this API/tab is staff-only by
+  // product decision — parties and general public are tracked, never
+  // granted access). Without this, any signed-in user could connect with
+  // an arbitrary meetingId and receive that meeting's live participant
   // PII. See auth/requireMeetingMembership.ts for the same check applied
   // to REST routes.
   io.use((socket, next) => {

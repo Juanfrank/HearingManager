@@ -280,28 +280,35 @@ let any signed-in user fabricate attendance.
 `requireTeamsUser` only proves *identity*: the caller holds a valid token
 for this app, i.e. they're some real signed-in user in the tenant. It says
 nothing about whether they're entitled to touch the specific `:meetingId`
-in the request. `backend/src/auth/requireMeetingMembership.ts` is the
-separate check for that — applied after `requireTeamsUser` on every
-meeting-scoped router (`hearings`, `parties`, `judges`, `remap`,
-`messages`, `notes`, `grants`, `participants`, `session`, and `GET
-/state`) and in `ws.ts`'s Socket.IO handshake, it 403s unless
-`req.actorEmail` is either a provisioned `JudgeOrAuxiliary` or an actual
-`RosterEntry` for that meeting. Without this, any authenticated user in
-the tenant could read or mutate any *other* meeting just by knowing its
-id — including receiving that meeting's live participant PII over the
-socket. Two routes are deliberately exempt, each for a documented reason
-rather than an oversight:
-- `routes/roster.ts`'s two dev-only simulation routes — they're the
-  mechanism that *grants* membership (a real join, or its
-  `ALLOW_ROSTER_SIMULATION`-gated stand-in), so requiring prior membership
-  to reach them would make it impossible to add the first participant.
+in the request — or, by product decision, whether they're entitled to use
+this API/tab **at all**: **only judges and auxiliaries may call this API
+or load the tab; parties and general public are tracked (roster presence,
+attendance status, presenter eligibility) but never granted access to it,
+regardless of whether they're connected to the meeting.**
+`backend/src/auth/requireMeetingMembership.ts` is the separate check for
+that — applied after `requireTeamsUser` on every meeting-scoped router
+(`hearings`, `parties`, `judges`, `remap`, `messages`, `notes`, `grants`,
+`participants`, `session`, and `GET /state`) and in `ws.ts`'s Socket.IO
+handshake, it 403s unless `req.actorEmail` matches a provisioned
+`JudgeOrAuxiliary` row for that meeting — merely being connected (a
+`RosterEntry` for that meeting) is deliberately **not** sufficient on its
+own, since that's true of parties and general public too. Without this
+check at all, any authenticated user in the tenant could read or mutate
+any meeting just by knowing its id — including receiving live participant
+PII over the socket. Two routes are deliberately exempt, each for a
+documented reason rather than an oversight:
+- `routes/roster.ts`'s two dev-only simulation routes — they only feed
+  presence/attendance tracking, not API access, and are independently
+  gated by `ALLOW_ROSTER_SIMULATION` (must be off in production).
 - `POST /register` (`routes/meetings.ts`) — creating a not-yet-existing
-  `Meeting` row is always allowed (it's how the first legitimate
-  participant bootstraps a brand-new meeting, before any judge/roster row
-  can exist for them yet), but *changing* an already-configured meeting's
-  `organizerUserId`/`onlineMeetingId` requires the caller to already be a
-  member — otherwise an unrelated authenticated user could redirect which
-  Graph meeting future role-PATCH calls target for someone else's session.
+  `Meeting` row is always allowed (it's how the very first legitimate
+  judge bootstraps a brand-new meeting, before their own
+  `JudgeOrAuxiliary` row may exist yet if provisioning hasn't run first),
+  but *changing* an already-configured meeting's
+  `organizerUserId`/`onlineMeetingId` requires the caller to already be an
+  authorized judge/auxiliary of it — otherwise an unrelated authenticated
+  user could redirect which Graph meeting future role-PATCH calls target
+  for someone else's session.
 
 Also fails closed, not open: if `AUTH_MODE=teams-sso` and
 `MICROSOFT_APP_ID`/`MICROSOFT_APP_TENANT_ID` are unset, the server refuses

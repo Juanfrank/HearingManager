@@ -98,16 +98,19 @@ app.get("/api/meetings/:meetingId/state", requireMeetingMembership, async (req, 
 // DATA level. requireMeetingMembership (auth/requireMeetingMembership.ts)
 // is the separate ACCESS-CONTROL check on top of that: requireTeamsUser
 // only proves the caller is SOME signed-in user of this app, not that
-// they belong to THIS meeting — without it, any authenticated user could
-// read/mutate any other meeting just by knowing its id. See
+// they're actually one of THIS meeting's judges/auxiliaries — by product
+// decision, this API/tab is judges-and-auxiliaries only, so without this
+// check, any authenticated user (including a party or general-public
+// attendee) could read/mutate any meeting just by knowing its id. See
 // prisma/schema.prisma's Meeting model and routes/meetings.ts for how a
 // Meeting row comes to exist in the first place.
 //
-// roster.ts is deliberately NOT gated here — its two routes are the
-// mechanism that GRANTS membership (a real roster join, or the
-// ALLOW_ROSTER_SIMULATION-gated dev equivalent) and are independently
-// protected by that flag; requiring prior membership to reach them would
-// make it impossible to ever add the first participant.
+// roster.ts is deliberately NOT gated here — its two routes only feed
+// presence/attendance tracking (who's connected, for the derived
+// ready/incomplete/no-show status and presenter eligibility), not API
+// access, and are independently protected by ALLOW_ROSTER_SIMULATION.
+// Being on the roster (a party, general public, or a judge) is no longer
+// what grants API access — only being a provisioned JudgeOrAuxiliary is.
 app.use("/api/meetings/:meetingId/hearings", requireMeetingMembership, hearingsRouter);
 app.use("/api/meetings/:meetingId/parties", requireMeetingMembership, partiesRouter);
 app.use("/api/meetings/:meetingId/roster", rosterRouter);
