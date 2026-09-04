@@ -226,6 +226,14 @@ identity resolution, and messaging need every one of these done first:
    meetings for.
 5. Tenant admin approval to sideload/publish the Teams app package
    (`manifest/manifest.json` + icons, see `manifest/README.md`).
+6. **A redirect URI on the app registration**:
+   `https://<TAB_HOSTNAME>/auth-end.html` (Web platform). Needed for the
+   interactive Teams SSO consent fallback below — without it, AAD refuses
+   the redirect with `AADSTS50011` before `auth-end.html` ever runs. Org-
+   wide admin consent for `access_as_user` (§2-style, but for this app's
+   own exposed API scope, added when the app registration is created)
+   makes that fallback a non-event for everyone — set it up if you can,
+   this is just the safety net for when you can't.
 
 Once these exist, set `GRAPH_MODE=real` and fill in
 `MICROSOFT_APP_ID` / `MICROSOFT_APP_PASSWORD` / `MICROSOFT_APP_TENANT_ID`
@@ -240,27 +248,40 @@ Every `/api/*` request (REST and the Socket.IO handshake) requires a
 validated identity — this is what the audit log's `actorEmail` is actually
 backed by, not a client-supplied header:
 
-- **`tab/src/teamsContext.ts`**'s `getAuthToken()` calls
-  `microsoftTeams.authentication.getAuthToken()`, which — once the tenant
-  admin has consented to this app (§3 above) — silently returns an Azure AD
+- **`tab/src/teamsContext.ts`**'s `getAuthToken()` first tries
+  `microsoftTeams.authentication.getAuthToken()` SILENTLY — once consent
+  exists for this app's `access_as_user` scope (org-wide, §3 above, or
+  granted individually by this user before), this returns an Azure AD
   access token for this app's own App ID (audience =
-  `webApplicationInfo.id`/`.resource` in `manifest/manifest.json`), no
+  `webApplicationInfo.id`/`.resource` in `manifest/manifest.json`) with no
   popup or password prompt. `tab/src/api.ts` and `tab/src/socket.ts` attach
   it as `Authorization: Bearer <token>` on every call.
+- **Interactive-consent fallback — doesn't rely on admin consent being
+  done ahead of time.** When the silent call rejects with a consent-
+  required error (`resourceRequiresConsent`/`invalid_grant`/
+  `consent_required`/`interaction_required` — Teams JS's exact error shape
+  varies, so this matches by substring), `getAuthToken()` falls back to
+  `microsoftTeams.authentication.authenticate()`, a popup that loads
+  **`tab/auth-start.html`** (`src/auth-start.ts`) — which redirects to
+  Microsoft's own `/oauth2/v2.0/authorize` endpoint requesting this app's
+  `access_as_user` scope, i.e. a real Microsoft consent prompt — and
+  **`tab/auth-end.html`** (`src/auth-end.ts`), the redirect target, which
+  reports success/failure back to the tab via
+  `notifySuccess`/`notifyFailure`. The access token that popup round trip
+  itself obtains is discarded; its only job is getting AAD to record
+  consent for this user, after which the SILENT call is retried once and
+  succeeds. Requires `VITE_MICROSOFT_APP_ID`/`VITE_MICROSOFT_APP_TENANT_ID`
+  set at tab build time (`tab/.env.example`) and the app registration's
+  redirect URI (§6 above) — without either, the popup shows an inline
+  error instead of redirecting. If the user declines or the popup fails,
+  `getAuthToken()` returns `null` for the rest of that tab session rather
+  than reopening the popup on every subsequent API call.
 - **`backend/src/auth/verifyTeamsToken.ts`**'s `requireTeamsUser` (REST,
   mounted in `index.ts`) and the equivalent Socket.IO handshake check
   (`ws.ts`) verify that token's signature (against Azure AD's public keys,
   via `jwks-rsa`), audience, and tenant, then extract the signed-in user's
   `preferred_username`/`upn` as `req.actorEmail` — the value every route
   now uses for audit-log attribution instead of trusting a client header.
-
-**Known gap**: this only covers the *silent* SSO path. If the tenant hasn't
-done org-wide admin consent for this app's `access_as_user` scope yet (or
-consent is per-user), `getAuthToken()` rejects with
-`resourceRequiresConsent`/`invalid_grant`, and there's currently no
-interactive-consent fallback (`microsoftTeams.authentication.authenticate`
-popup + `tab/auth-start.html`/`auth-end.html` pages) wired up — add that if
-this deployment can't rely on admin consent being done ahead of time.
 
 **Local dev without a real Entra app registration**: set
 `AUTH_MODE=dev-bypass` in `backend/.env` (the default in

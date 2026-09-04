@@ -18,12 +18,18 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Two entry points: the meeting-side-panel tab (index.html) and the
+      // Four entry points: the meeting-side-panel tab (index.html), the
       // configurableTabs config page (config.html, see docs/README.md for
-      // when to use it vs. the simpler staticTabs manifest entry).
+      // when to use it vs. the simpler staticTabs manifest entry), and
+      // auth-start.html/auth-end.html — the interactive-consent popup
+      // pair teamsContext.ts's getAuthToken() falls back to when silent
+      // Teams SSO needs consent it doesn't have yet (docs/README.md,
+      // "Auth: Teams SSO").
       input: {
         main: resolve(__dirname, "index.html"),
         config: resolve(__dirname, "config.html"),
+        authStart: resolve(__dirname, "auth-start.html"),
+        authEnd: resolve(__dirname, "auth-end.html"),
       },
     },
   },
