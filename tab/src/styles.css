@@ -161,6 +161,36 @@ textarea {
 .progress-summary { text-align: center; margin: 16px 0; }
 .progress-number { font-size: 28px; font-weight: 600; }
 
+/* At-a-glance status grid, right under the progress summary — see
+   components/HearingStatusGrid.tsx for the ordering/coloring rules. */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  margin: 0 0 16px;
+}
+.status-square {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px;
+  border: 1px solid transparent;
+}
+.status-square .grid-num { font-size: 12px; font-weight: 700; }
+.status-square .grid-count { font-size: 10px; font-weight: 500; opacity: 0.85; }
+.status-square .grid-check {
+  position: absolute; top: 3px; right: 4px; font-size: 10px; color: var(--green); font-weight: 700;
+}
+.status-square.ready { background: #eef6f0; border-color: var(--green); color: #145c29; }
+.status-square.incomplete { background: #fbf1da; border-color: var(--amber); color: #7a5200; }
+.status-square.no_show { background: #fbeaec; border-color: var(--red); color: #9c1c27; }
+.status-square.completed { background: #f0f1f3; border-color: var(--border); color: var(--muted); }
+
 .general-public-entry { margin-bottom: 10px; }
 .map-as-row { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 .map-as-row select, .map-as-row input, .map-as-row button {

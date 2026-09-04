@@ -395,6 +395,24 @@ trail as `participant.forceMuteOnDemotion`, attributed to
 `system:demotion` since it's a side effect of the sync rather than
 something one specific human directly clicked.
 
+## Hearing status grid
+
+Right under the "Audiencias completadas / total" count
+(`tab/src/components/HearingStatusGrid.tsx`), a compact grid of rounded
+squares gives an at-a-glance view of every hearing in the meeting — one
+square per hearing, sized to just its number and present/expected count
+(e.g. "#2" / "(1/2)"), colored by its derived `attendanceStatus`
+(`statusDerivation.ts`): green for `ready`, amber for `incomplete`, red
+for `no_show`. Order is ready, then incomplete, then no_show — each
+bucket keeping the hearings' existing order (hearingNumber ascending, as
+returned by `stateSnapshot.ts`) — with `COMPLETED` hearings pulled to the
+end, shown with a checkmark and a neutral background instead of a live
+attendance color, since a finished hearing's attendance is a historical
+fact, not something still needing attention. The currently-`ACTIVE`
+hearing (already spotlighted above this grid) is included too, colored by
+its own live attendance status like any pending one — the grid isn't
+meant to hide it, just to summarize the whole day in one glance.
+
 ## Role labels
 
 Every judge/auxiliary row and every party row shows that person's role as a

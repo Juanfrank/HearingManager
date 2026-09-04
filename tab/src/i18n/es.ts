@@ -58,6 +58,8 @@ export const es = {
   "hearingsSection.incomplete": "Incompletas",
   "hearingsSection.noShow": "Inasistencia",
   "hearingsSection.completed": "Audiencias completadas",
+  "hearingsSection.gridNumber": "#{number}",
+  "hearingsSection.gridCount": "({present}/{expected})",
 
   // --- GeneralPublic (presence + mic/camera grant only — mapping to a
   // hearing/party now lives on HearingCard, see hearingCard.mapTo* /

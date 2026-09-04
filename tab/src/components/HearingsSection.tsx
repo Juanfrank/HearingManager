@@ -1,6 +1,7 @@
 import type { GeneralPublicEntry, HearingView } from "../types";
 import { Collapsible } from "./Collapsible";
 import { HearingCard } from "./HearingCard";
+import { HearingStatusGrid } from "./HearingStatusGrid";
 import { t } from "../i18n";
 
 export function HearingsSection({
@@ -61,6 +62,8 @@ export function HearingsSection({
           {completedCount} / {totalCount}
         </div>
       </div>
+
+      <HearingStatusGrid hearings={hearings} />
 
       <Collapsible title={t("hearingsSection.pending")} count={pendingOnly.length} defaultOpen>
         <Collapsible title={t("hearingsSection.ready")} count={ready.length} defaultOpen accent="green">
