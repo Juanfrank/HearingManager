@@ -164,14 +164,17 @@ textarea {
 /* At-a-glance status grid, right under the progress summary — see
    components/HearingStatusGrid.tsx for the ordering/coloring rules. */
 .status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   margin: 0 0 16px;
 }
 .status-square {
   position: relative;
-  aspect-ratio: 1 / 1;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
