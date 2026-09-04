@@ -17,6 +17,19 @@ datasource db {
   //     nothing in the TS code imported Prisma's enum types directly (it
   //     already used string-literal unions everywhere), so this is a
   //     schema-only change.
+  //
+  // Least-privilege install (docs/README.md "Database"): this app expects
+  // to run against an ALREADY-CREATED database, under its own SQL Server
+  // login scoped to a single, dedicated schema — never db_owner, never
+  // permission on any other schema. The schema name is fixed at
+  // "hearingmgr" (baked into the committed migration SQL in
+  // prisma/migrations/ — every CREATE TABLE there is already qualified
+  // [hearingmgr].[...]), so DATABASE_URL's `schema=` connection param must
+  // be exactly `hearingmgr` for `prisma migrate deploy` to find the
+  // matching migration history; only the server/database/login/password
+  // vary per install. See docs/README.md's "Deploying to Azure App
+  // Service" step 2 for the exact DBA-run T-SQL that provisions the
+  // schema + login with nothing broader than CONTROL ON SCHEMA.
   provider = "sqlserver"
   url      = env("DATABASE_URL")
 }

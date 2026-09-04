@@ -581,7 +581,7 @@ the app changes.
 cd backend
 cp .env.example .env         # fill in DATABASE_URL at minimum
 npm install
-npx prisma db push           # requires a reachable SQL Server — see below
+npx prisma migrate deploy    # requires a reachable SQL Server — see below
 npm run dev                  # http://localhost:3978
 ```
 
@@ -592,14 +592,22 @@ supports neither the array-of-emails relation this schema needs nor a
 scalar-list workaround cheaply, and (more fundamentally) this schema
 avoids `enum`/`Json` column types specifically *because* SQL Server's own
 connector doesn't support them either — see `datasource db`'s comment for
-the full list of SQL-Server-specific workarounds. For local dev without
-access to the org's instance, run SQL Server itself in a disposable
-container — `docker run -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='<a-strong-
-password>' -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest` — and
-point `DATABASE_URL` at `localhost:1433` (see `.env.example` for the exact
-connection-string format). `prisma db push` (rather than `migrate dev`) is
-the normal flow here since there's no committed migration history yet —
-switch to `migrate dev`/`migrate deploy` once one exists.
+the full list of SQL-Server-specific workarounds.
+
+**This app never creates its own database or requests broad permissions**
+— it expects the database and a dedicated schema (fixed name `hearingmgr`,
+baked into the committed migration SQL in `prisma/migrations/`) to already
+exist, with its own login scoped to `CONTROL` on that one schema only, no
+`db_owner`/`db_ddladmin`/access to any other schema. See "Deploying to
+Azure App Service" step 2 below for the exact T-SQL a DBA runs once, and
+`.env.example` for why `DATABASE_URL`'s `schema=hearingmgr` param is
+required, not optional. For local dev without access to the org's
+instance, run SQL Server itself in a disposable container —
+`docker run -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='<a-strong-password>'
+-p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest` — then run that
+same DBA setup script against it once (`sa` is fine for this one-time
+local step; a real deployment never puts `sa` in `DATABASE_URL`) before
+pointing `DATABASE_URL` at `localhost:1433`.
 
 With `GRAPH_MODE=mock` and `AUTH_MODE=dev-bypass` (both defaults in
 `.env.example`), you can drive the whole hearing lifecycle without a live
@@ -662,10 +670,39 @@ server instead), so nothing needs an env-var override either way.
 1. **App Service**: Linux, Node 20+, e.g.
    `az webapp up --name <app> --resource-group <rg> --runtime "NODE:20-lts"`.
 2. **Database**: the organization's own SQL Server instance — no Azure
-   database service (paid or otherwise) is required. Any reachable SQL
-   Server the deploying org already runs works: point `DATABASE_URL` at it
-   (see `backend/.env.example` for the connection-string format) with a
-   login that can create/alter tables in the target database.
+   database service (paid or otherwise) is required, and this app never
+   creates its own database or asks for broad permissions. The DBA
+   provisions everything up front, scoped to one dedicated schema:
+
+   ```sql
+   -- Run once by the DBA, against an ALREADY-EXISTING database (this app
+   -- never runs CREATE DATABASE). Schema name is fixed at "hearingmgr" —
+   -- it's baked into the committed migration SQL in prisma/migrations/,
+   -- so it can't be renamed per install without regenerating that history.
+   USE <existing_database_name>;
+   CREATE SCHEMA hearingmgr AUTHORIZATION dbo;
+
+   CREATE LOGIN hearingmgr_app WITH PASSWORD = '<a-strong-password>', CHECK_POLICY = ON;
+   CREATE USER hearingmgr_app FOR LOGIN hearingmgr_app WITH DEFAULT_SCHEMA = hearingmgr;
+
+   -- CONTROL on the schema covers every DDL/DML this app performs inside
+   -- it (create/alter/drop its own tables via `prisma migrate deploy`,
+   -- plus ordinary reads/writes) without granting db_owner/db_ddladmin or
+   -- any reach into other schemas in the same database. CREATE TABLE is a
+   -- database-scoped permission in SQL Server even when the target schema
+   -- is one this login controls, so it's granted explicitly too.
+   GRANT CONTROL ON SCHEMA::hearingmgr TO hearingmgr_app;
+   GRANT CREATE TABLE TO hearingmgr_app;
+   ```
+
+   Then point `DATABASE_URL` at it — `sqlserver://<host>:1433;database=
+   <existing_database_name>;schema=hearingmgr;user=hearingmgr_app;
+   password=<that-password>;encrypt=true` (see `backend/.env.example` for
+   the full annotated format). Verified end-to-end against a real SQL
+   Server instance with exactly this login (no `db_owner`, confirmed via
+   `sys.database_role_members`): `prisma migrate deploy` applies cleanly,
+   every table lands in `hearingmgr`, and the login is denied `CREATE
+   TABLE` in `dbo`, `CREATE SCHEMA`, and `CREATE DATABASE` alike.
 3. **WebSockets**: Socket.IO needs this explicitly enabled —
    `az webapp config set --name <app> --resource-group <rg> --web-sockets-enabled true`.
    "Always On" is also worth enabling so the process doesn't idle out

@@ -3,7 +3,7 @@ BEGIN TRY
 BEGIN TRAN;
 
 -- CreateTable
-CREATE TABLE [dbo].[Meeting] (
+CREATE TABLE [hearingmgr].[Meeting] (
     [id] NVARCHAR(1000) NOT NULL,
     [organizerUserId] NVARCHAR(1000),
     [onlineMeetingId] NVARCHAR(1000),
@@ -15,7 +15,7 @@ CREATE TABLE [dbo].[Meeting] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[Hearing] (
+CREATE TABLE [hearingmgr].[Hearing] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000) NOT NULL,
     [hearingNumber] INT NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE [dbo].[Hearing] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[HearingNote] (
+CREATE TABLE [hearingmgr].[HearingNote] (
     [id] NVARCHAR(1000) NOT NULL,
     [hearingId] NVARCHAR(1000) NOT NULL,
     [authorEmail] NVARCHAR(1000) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE [dbo].[HearingNote] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[PresenterGrant] (
+CREATE TABLE [hearingmgr].[PresenterGrant] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000) NOT NULL,
     [email] NVARCHAR(1000) NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE [dbo].[PresenterGrant] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[HearingPeriod] (
+CREATE TABLE [hearingmgr].[HearingPeriod] (
     [id] NVARCHAR(1000) NOT NULL,
     [hearingId] NVARCHAR(1000) NOT NULL,
     [startedAt] DATETIME2 NOT NULL CONSTRAINT [HearingPeriod_startedAt_df] DEFAULT CURRENT_TIMESTAMP,
@@ -60,7 +60,7 @@ CREATE TABLE [dbo].[HearingPeriod] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[ExpectedParty] (
+CREATE TABLE [hearingmgr].[ExpectedParty] (
     [id] NVARCHAR(1000) NOT NULL,
     [hearingId] NVARCHAR(1000) NOT NULL,
     [name] NVARCHAR(1000) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE [dbo].[ExpectedParty] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[PartyEmail] (
+CREATE TABLE [hearingmgr].[PartyEmail] (
     [id] NVARCHAR(1000) NOT NULL,
     [expectedPartyId] NVARCHAR(1000) NOT NULL,
     [email] NVARCHAR(1000) NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE [dbo].[PartyEmail] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[RosterEntry] (
+CREATE TABLE [hearingmgr].[RosterEntry] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000) NOT NULL,
     [email] NVARCHAR(1000) NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE [dbo].[RosterEntry] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[RosterConnectionEvent] (
+CREATE TABLE [hearingmgr].[RosterConnectionEvent] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000) NOT NULL,
     [email] NVARCHAR(1000) NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE [dbo].[RosterConnectionEvent] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[RemapMapping] (
+CREATE TABLE [hearingmgr].[RemapMapping] (
     [id] NVARCHAR(1000) NOT NULL,
     [rosterEmail] NVARCHAR(1000) NOT NULL,
     [mappedToType] NVARCHAR(1000) NOT NULL,
@@ -117,7 +117,7 @@ CREATE TABLE [dbo].[RemapMapping] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[JudgeOrAuxiliary] (
+CREATE TABLE [hearingmgr].[JudgeOrAuxiliary] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000) NOT NULL,
     [name] NVARCHAR(1000) NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE [dbo].[JudgeOrAuxiliary] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[JudgeEmail] (
+CREATE TABLE [hearingmgr].[JudgeEmail] (
     [id] NVARCHAR(1000) NOT NULL,
     [judgeOrAuxiliaryId] NVARCHAR(1000) NOT NULL,
     [email] NVARCHAR(1000) NOT NULL,
@@ -136,7 +136,7 @@ CREATE TABLE [dbo].[JudgeEmail] (
 );
 
 -- CreateTable
-CREATE TABLE [dbo].[AuditLogEntry] (
+CREATE TABLE [hearingmgr].[AuditLogEntry] (
     [id] NVARCHAR(1000) NOT NULL,
     [meetingId] NVARCHAR(1000),
     [hearingId] NVARCHAR(1000),
@@ -149,100 +149,100 @@ CREATE TABLE [dbo].[AuditLogEntry] (
 );
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [Hearing_meetingId_idx] ON [dbo].[Hearing]([meetingId]);
+CREATE NONCLUSTERED INDEX [Hearing_meetingId_idx] ON [hearingmgr].[Hearing]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [HearingNote_hearingId_idx] ON [dbo].[HearingNote]([hearingId]);
+CREATE NONCLUSTERED INDEX [HearingNote_hearingId_idx] ON [hearingmgr].[HearingNote]([hearingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [PresenterGrant_meetingId_idx] ON [dbo].[PresenterGrant]([meetingId]);
+CREATE NONCLUSTERED INDEX [PresenterGrant_meetingId_idx] ON [hearingmgr].[PresenterGrant]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [HearingPeriod_hearingId_idx] ON [dbo].[HearingPeriod]([hearingId]);
+CREATE NONCLUSTERED INDEX [HearingPeriod_hearingId_idx] ON [hearingmgr].[HearingPeriod]([hearingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [ExpectedParty_hearingId_idx] ON [dbo].[ExpectedParty]([hearingId]);
+CREATE NONCLUSTERED INDEX [ExpectedParty_hearingId_idx] ON [hearingmgr].[ExpectedParty]([hearingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [PartyEmail_expectedPartyId_idx] ON [dbo].[PartyEmail]([expectedPartyId]);
+CREATE NONCLUSTERED INDEX [PartyEmail_expectedPartyId_idx] ON [hearingmgr].[PartyEmail]([expectedPartyId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [PartyEmail_email_idx] ON [dbo].[PartyEmail]([email]);
+CREATE NONCLUSTERED INDEX [PartyEmail_email_idx] ON [hearingmgr].[PartyEmail]([email]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [RosterEntry_meetingId_idx] ON [dbo].[RosterEntry]([meetingId]);
+CREATE NONCLUSTERED INDEX [RosterEntry_meetingId_idx] ON [hearingmgr].[RosterEntry]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [RosterConnectionEvent_meetingId_idx] ON [dbo].[RosterConnectionEvent]([meetingId]);
+CREATE NONCLUSTERED INDEX [RosterConnectionEvent_meetingId_idx] ON [hearingmgr].[RosterConnectionEvent]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [RosterConnectionEvent_meetingId_email_idx] ON [dbo].[RosterConnectionEvent]([meetingId], [email]);
+CREATE NONCLUSTERED INDEX [RosterConnectionEvent_meetingId_email_idx] ON [hearingmgr].[RosterConnectionEvent]([meetingId], [email]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [RemapMapping_hearingId_idx] ON [dbo].[RemapMapping]([hearingId]);
+CREATE NONCLUSTERED INDEX [RemapMapping_hearingId_idx] ON [hearingmgr].[RemapMapping]([hearingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [RemapMapping_rosterEmail_idx] ON [dbo].[RemapMapping]([rosterEmail]);
+CREATE NONCLUSTERED INDEX [RemapMapping_rosterEmail_idx] ON [hearingmgr].[RemapMapping]([rosterEmail]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [JudgeOrAuxiliary_meetingId_idx] ON [dbo].[JudgeOrAuxiliary]([meetingId]);
+CREATE NONCLUSTERED INDEX [JudgeOrAuxiliary_meetingId_idx] ON [hearingmgr].[JudgeOrAuxiliary]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [JudgeEmail_judgeOrAuxiliaryId_idx] ON [dbo].[JudgeEmail]([judgeOrAuxiliaryId]);
+CREATE NONCLUSTERED INDEX [JudgeEmail_judgeOrAuxiliaryId_idx] ON [hearingmgr].[JudgeEmail]([judgeOrAuxiliaryId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [JudgeEmail_email_idx] ON [dbo].[JudgeEmail]([email]);
+CREATE NONCLUSTERED INDEX [JudgeEmail_email_idx] ON [hearingmgr].[JudgeEmail]([email]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [AuditLogEntry_meetingId_idx] ON [dbo].[AuditLogEntry]([meetingId]);
+CREATE NONCLUSTERED INDEX [AuditLogEntry_meetingId_idx] ON [hearingmgr].[AuditLogEntry]([meetingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [AuditLogEntry_hearingId_idx] ON [dbo].[AuditLogEntry]([hearingId]);
+CREATE NONCLUSTERED INDEX [AuditLogEntry_hearingId_idx] ON [hearingmgr].[AuditLogEntry]([hearingId]);
 
 -- CreateIndex
-CREATE NONCLUSTERED INDEX [AuditLogEntry_createdAt_idx] ON [dbo].[AuditLogEntry]([createdAt]);
+CREATE NONCLUSTERED INDEX [AuditLogEntry_createdAt_idx] ON [hearingmgr].[AuditLogEntry]([createdAt]);
 
 -- AddForeignKey
-ALTER TABLE [dbo].[Hearing] ADD CONSTRAINT [Hearing_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[Hearing] ADD CONSTRAINT [Hearing_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[HearingNote] ADD CONSTRAINT [HearingNote_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [dbo].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[HearingNote] ADD CONSTRAINT [HearingNote_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [hearingmgr].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[PresenterGrant] ADD CONSTRAINT [PresenterGrant_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[PresenterGrant] ADD CONSTRAINT [PresenterGrant_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[HearingPeriod] ADD CONSTRAINT [HearingPeriod_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [dbo].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[HearingPeriod] ADD CONSTRAINT [HearingPeriod_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [hearingmgr].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[ExpectedParty] ADD CONSTRAINT [ExpectedParty_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [dbo].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[ExpectedParty] ADD CONSTRAINT [ExpectedParty_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [hearingmgr].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[PartyEmail] ADD CONSTRAINT [PartyEmail_expectedPartyId_fkey] FOREIGN KEY ([expectedPartyId]) REFERENCES [dbo].[ExpectedParty]([id]) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[PartyEmail] ADD CONSTRAINT [PartyEmail_expectedPartyId_fkey] FOREIGN KEY ([expectedPartyId]) REFERENCES [hearingmgr].[ExpectedParty]([id]) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[RosterEntry] ADD CONSTRAINT [RosterEntry_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[RosterEntry] ADD CONSTRAINT [RosterEntry_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[RosterConnectionEvent] ADD CONSTRAINT [RosterConnectionEvent_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[RosterConnectionEvent] ADD CONSTRAINT [RosterConnectionEvent_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[RemapMapping] ADD CONSTRAINT [RemapMapping_mappedToExpectedPartyId_fkey] FOREIGN KEY ([mappedToExpectedPartyId]) REFERENCES [dbo].[ExpectedParty]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[RemapMapping] ADD CONSTRAINT [RemapMapping_mappedToExpectedPartyId_fkey] FOREIGN KEY ([mappedToExpectedPartyId]) REFERENCES [hearingmgr].[ExpectedParty]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[RemapMapping] ADD CONSTRAINT [RemapMapping_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [dbo].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[RemapMapping] ADD CONSTRAINT [RemapMapping_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [hearingmgr].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[JudgeOrAuxiliary] ADD CONSTRAINT [JudgeOrAuxiliary_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[JudgeOrAuxiliary] ADD CONSTRAINT [JudgeOrAuxiliary_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[JudgeEmail] ADD CONSTRAINT [JudgeEmail_judgeOrAuxiliaryId_fkey] FOREIGN KEY ([judgeOrAuxiliaryId]) REFERENCES [dbo].[JudgeOrAuxiliary]([id]) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE [hearingmgr].[JudgeEmail] ADD CONSTRAINT [JudgeEmail_judgeOrAuxiliaryId_fkey] FOREIGN KEY ([judgeOrAuxiliaryId]) REFERENCES [hearingmgr].[JudgeOrAuxiliary]([id]) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditLogEntry] ADD CONSTRAINT [AuditLogEntry_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [dbo].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[AuditLogEntry] ADD CONSTRAINT [AuditLogEntry_meetingId_fkey] FOREIGN KEY ([meetingId]) REFERENCES [hearingmgr].[Meeting]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE [dbo].[AuditLogEntry] ADD CONSTRAINT [AuditLogEntry_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [dbo].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE [hearingmgr].[AuditLogEntry] ADD CONSTRAINT [AuditLogEntry_hearingId_fkey] FOREIGN KEY ([hearingId]) REFERENCES [hearingmgr].[Hearing]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 COMMIT TRAN;
 
