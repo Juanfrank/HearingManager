@@ -22,6 +22,7 @@ import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
 import { requireTeamsUser } from "./auth/verifyTeamsToken";
+import { requireMeetingMembership } from "./auth/requireMeetingMembership";
 import { startDailyImportScheduler } from "./services/dailyImportScheduler";
 
 const app = express();
@@ -86,30 +87,44 @@ app.use("/api/admin", adminRouter);
 // actually stand behind.
 app.use("/api", requireTeamsUser);
 
-app.get("/api/meetings/:meetingId/state", async (req, res) => {
+app.get("/api/meetings/:meetingId/state", requireMeetingMembership, async (req, res) => {
   res.json(await buildStateSnapshot(req.params.meetingId, false));
 });
 
 // Every resource is scoped under :meetingId (Teams' own meeting/
 // conversation id, resolved by the tab from its meeting context — see
 // tab/src/teamsContext.ts) — the tenant boundary that keeps two
-// concurrent meetings' hearings/roster/judges from ever mixing. See
+// concurrent meetings' hearings/roster/judges from ever mixing at the
+// DATA level. requireMeetingMembership (auth/requireMeetingMembership.ts)
+// is the separate ACCESS-CONTROL check on top of that: requireTeamsUser
+// only proves the caller is SOME signed-in user of this app, not that
+// they belong to THIS meeting — without it, any authenticated user could
+// read/mutate any other meeting just by knowing its id. See
 // prisma/schema.prisma's Meeting model and routes/meetings.ts for how a
 // Meeting row comes to exist in the first place.
-app.use("/api/meetings/:meetingId/hearings", hearingsRouter);
-app.use("/api/meetings/:meetingId/parties", partiesRouter);
+//
+// roster.ts is deliberately NOT gated here — its two routes are the
+// mechanism that GRANTS membership (a real roster join, or the
+// ALLOW_ROSTER_SIMULATION-gated dev equivalent) and are independently
+// protected by that flag; requiring prior membership to reach them would
+// make it impossible to ever add the first participant.
+app.use("/api/meetings/:meetingId/hearings", requireMeetingMembership, hearingsRouter);
+app.use("/api/meetings/:meetingId/parties", requireMeetingMembership, partiesRouter);
 app.use("/api/meetings/:meetingId/roster", rosterRouter);
-app.use("/api/meetings/:meetingId/judges", judgesRouter);
-app.use("/api/meetings/:meetingId/remap", remapRouter);
-app.use("/api/meetings/:meetingId/messages", messagesRouter);
+app.use("/api/meetings/:meetingId/judges", requireMeetingMembership, judgesRouter);
+app.use("/api/meetings/:meetingId/remap", requireMeetingMembership, remapRouter);
+app.use("/api/meetings/:meetingId/messages", requireMeetingMembership, messagesRouter);
 // notes/grants/participants/session define their own leaf paths (e.g.
 // GET /notes, POST /grants, POST /participants/:email/mute,
 // POST /end-session) rather than each getting their own app.use prefix —
 // mounted at the bare :meetingId base alongside meetingsRouter.
-app.use("/api/meetings/:meetingId", notesRouter);
-app.use("/api/meetings/:meetingId", grantsRouter);
-app.use("/api/meetings/:meetingId", participantsRouter);
-app.use("/api/meetings/:meetingId", sessionRouter);
+app.use("/api/meetings/:meetingId", requireMeetingMembership, notesRouter);
+app.use("/api/meetings/:meetingId", requireMeetingMembership, grantsRouter);
+app.use("/api/meetings/:meetingId", requireMeetingMembership, participantsRouter);
+app.use("/api/meetings/:meetingId", requireMeetingMembership, sessionRouter);
+// meetingsRouter (just POST /register) is NOT gated here — see its own
+// narrower rule in routes/meetings.ts for why membership can't be a
+// precondition for the one route that bootstraps membership itself.
 app.use("/api/meetings/:meetingId", meetingsRouter);
 
 // Serves the tab's production build (index.html + config.html + assets)

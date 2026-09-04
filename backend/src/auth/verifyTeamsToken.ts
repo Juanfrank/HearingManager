@@ -25,6 +25,27 @@ const EXPECTED_AUDIENCES = [MICROSOFT_APP_ID, `api://${TAB_HOSTNAME}/${MICROSOFT
   Boolean,
 );
 
+// Fail CLOSED at startup, not open at request time: without MICROSOFT_APP_ID
+// (and, since the JWKS endpoint below is the multi-tenant "common" one,
+// MICROSOFT_APP_TENANT_ID too) EXPECTED_AUDIENCES/EXPECTED_TENANT_ID end up
+// empty, and verifyBearerToken's checks below used to silently skip
+// validating either one — meaning a misconfigured deployment would accept
+// ANY validly-signed Azure AD token from ANY app in ANY tenant as a
+// legitimate actor. Refusing to even start is the safe failure mode for a
+// security check this central.
+if (AUTH_MODE !== "dev-bypass") {
+  if (!MICROSOFT_APP_ID) {
+    throw new Error(
+      "AUTH_MODE=teams-sso requires MICROSOFT_APP_ID to be set — refusing to start with token audience validation silently disabled (auth/verifyTeamsToken.ts). Set AUTH_MODE=dev-bypass for local dev without a real Entra app registration instead.",
+    );
+  }
+  if (!EXPECTED_TENANT_ID) {
+    throw new Error(
+      "AUTH_MODE=teams-sso requires MICROSOFT_APP_TENANT_ID to be set — refusing to start with token tenant validation silently disabled (auth/verifyTeamsToken.ts). Set AUTH_MODE=dev-bypass for local dev without a real Entra app registration instead.",
+    );
+  }
+}
+
 const jwks = jwksClient({
   // v2.0 endpoint, multi-tenant-safe key set; we still pin the tenant via
   // the token's own `tid` claim below rather than trusting the endpoint.
@@ -57,10 +78,14 @@ export function verifyBearerToken(token: string): Promise<string> {
       if (err || !decoded || typeof decoded === "string") {
         return reject(new Error(`invalid token: ${err?.message ?? "unparseable"}`));
       }
-      if (EXPECTED_AUDIENCES.length && !EXPECTED_AUDIENCES.includes(decoded.aud as string)) {
+      // Unconditional, not "only if configured" — the module-level throw
+      // above should already prevent ever reaching here with either list
+      // empty, but this is the actual security boundary; it must never
+      // silently pass just because a config value came back empty.
+      if (!EXPECTED_AUDIENCES.length || !EXPECTED_AUDIENCES.includes(decoded.aud as string)) {
         return reject(new Error("token audience does not match this app"));
       }
-      if (EXPECTED_TENANT_ID && decoded.tid !== EXPECTED_TENANT_ID) {
+      if (!EXPECTED_TENANT_ID || decoded.tid !== EXPECTED_TENANT_ID) {
         return reject(new Error("token issued for a different tenant"));
       }
       const email = (

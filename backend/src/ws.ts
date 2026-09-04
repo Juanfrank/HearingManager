@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { verifyBearerToken, isDevBypass } from "./auth/verifyTeamsToken";
+import { isMeetingMember } from "./auth/requireMeetingMembership";
 
 let io: SocketIOServer | null = null;
 // rosterStale is per-meeting: one meeting's bot losing its roster
@@ -22,6 +23,13 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
   // would leak PII even though it can't mutate anything. meetingId is
   // required from every client regardless of auth mode — see
   // tab/src/socket.ts for how it's resolved (Teams meeting context).
+  //
+  // Also checks meeting MEMBERSHIP, not just identity — an authenticated
+  // token only proves "a real signed-in user of this app," not "belongs to
+  // THIS meeting." Without this, any signed-in user could connect with an
+  // arbitrary meetingId and receive another meeting's live participant
+  // PII. See auth/requireMeetingMembership.ts for the same check applied
+  // to REST routes.
   io.use((socket, next) => {
     const meetingId = socket.handshake.auth?.meetingId as string | undefined;
     if (!meetingId) return next(new Error("missing meetingId"));
@@ -31,7 +39,13 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
     const token = socket.handshake.auth?.token as string | undefined;
     if (!token) return next(new Error("missing auth token"));
     verifyBearerToken(token)
-      .then(() => next())
+      .then(async (email) => {
+        socket.data.actorEmail = email;
+        if (!(await isMeetingMember(meetingId, email))) {
+          return next(new Error("not authorized for this meeting"));
+        }
+        next();
+      })
       .catch((err: Error) => next(err));
   });
 
