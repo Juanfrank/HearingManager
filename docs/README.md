@@ -366,17 +366,34 @@ transition (`hearing.returnToPending`). The tab shows it as a second button
 next to "Mark as completed" (on an `ACTIVE` card) and next to "Reactivate"
 (on a `COMPLETED` card) — see `HearingCard.tsx`.
 
-**Mute / camera-off are a separate, weaker lever than the role PATCH.**
-Demoting someone to attendee only changes their *ability to self-unmute
-going forward* (Teams' standard "only organizers/presenters can turn on
-mic" meeting option) — it can't instantly cut off someone already
-unmuted. Actually forcing that requires Microsoft's real-time Cloud
+**Mute / camera-off are a separate, weaker lever than the role PATCH —
+so demotion now triggers both, not just the role change.** Demoting
+someone to attendee only changes their *ability to self-unmute going
+forward* (Teams' standard "only organizers/presenters can turn on mic"
+meeting option) — it can't instantly cut off someone already unmuted.
+Actually forcing that requires Microsoft's real-time Cloud
 Communications/Calls API, the same prerequisite already deferred for
 Calling (build-order item 8 below). `routes/participants.ts`'s
 mute/camera-off buttons are wired up and mocked under `GRAPH_MODE=mock`
 (`graph/client.ts`'s `muteParticipant`/`setParticipantCamera`) so the UI
 and audit trail exist now; real mode throws until that Calls API
 prerequisite is actually in place.
+
+Since the role PATCH alone can't actually silence someone already
+unmuted, `syncMeetingRoles()` (`graph/roleManager.ts`) now performs the
+role PATCH **and** force-mutes/turns off the camera for anyone it detects
+just dropped from presenter to attendee — regardless of what triggered
+the demotion (a hearing marked complete, returned to pending, another
+hearing activated/reactivated in its place, or a `PresenterGrant`
+revoked). It does this by comparing the newly-computed presenter set
+against the previous one (kept in an in-memory, per-meeting cache —
+reset on server restart, acceptable since this whole lever is mocked
+under `GRAPH_MODE=mock` and unimplemented in real mode anyway), so every
+call site that already calls `syncMeetingRoles()` gets this for free
+without individually detecting demotions themselves. Logged to the audit
+trail as `participant.forceMuteOnDemotion`, attributed to
+`system:demotion` since it's a side effect of the sync rather than
+something one specific human directly clicked.
 
 ## Role labels
 

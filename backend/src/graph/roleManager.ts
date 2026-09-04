@@ -1,8 +1,26 @@
 import { prisma } from "../db";
 import { deriveHearingAttendance } from "../services/statusDerivation";
 import { computePresenterEmails } from "../services/presenterRules";
-import { patchMeetingRoles, type AttendeeRole } from "./client";
+import { patchMeetingRoles, muteParticipant, setParticipantCamera, type AttendeeRole } from "./client";
 import { logAudit } from "../services/auditLog";
+
+// Actor label for audit entries created by the automatic force-mute/
+// camera-off below, mirroring services/sessionSummary.ts's
+// "system:session-summary" pattern — this isn't attributable to whoever
+// triggered the underlying action without threading actorEmail through
+// every syncMeetingRoles call site (roster events, grants, activate/
+// complete/reactivate/return-to-pending), so it's logged as the system
+// instead.
+const SYSTEM_DEMOTION_ACTOR = "system:demotion";
+
+// Last-computed presenter set per meeting, kept in memory so
+// syncMeetingRoles can tell who just got DEMOTED (was presenter, now
+// isn't) without every caller having to pass in the prior state. Reset on
+// server restart — acceptable here since force-mute/camera-off is itself
+// mocked under GRAPH_MODE=mock and throws in real mode until the Phase-2
+// Calls API prerequisite exists (docs/README.md); this cache only feeds
+// that same not-yet-real lever.
+const lastPresenterEmailsByMeeting = new Map<string, Set<string>>();
 
 /**
  * A stable, machine-readable error — carries a `code` + structured details
@@ -102,11 +120,55 @@ async function buildFullAttendeeRoleMap(meetingId: string): Promise<AttendeeRole
  * change who should be presenter: activate/complete/reactivate (below), a
  * roster join/leave (routes/roster.ts, bot/index.ts), or a grant/revoke
  * (routes/grants.ts).
+ *
+ * Also force-mutes and turns off the camera for anyone who just DROPPED
+ * from presenter to attendee here — whatever caused it (a hearing marked
+ * complete, returned to pending, reactivated elsewhere demoting the
+ * previously-active one, or a PresenterGrant revoked). The role PATCH
+ * above only blocks them from unmuting again going forward (Teams' "only
+ * organizers/presenters can unmute" default) — it can't instantly cut off
+ * someone who's already unmuted mid-hearing. Centralizing this HERE,
+ * rather than in each caller (activateHearing/completeHearing/etc.),
+ * means every demotion gets this treatment regardless of what triggered
+ * it, without duplicating the detection logic at every call site.
  */
 export async function syncMeetingRoles(meetingId: string): Promise<AttendeeRole[]> {
   const { organizerUserId, onlineMeetingId } = await resolveGraphMeetingRef(meetingId);
   const fullMap = await buildFullAttendeeRoleMap(meetingId);
   await patchMeetingRoles(organizerUserId, onlineMeetingId, fullMap);
+
+  const stillConnectedEmails = new Set(fullMap.map((r) => r.email.toLowerCase()));
+  const newPresenterEmails = new Set(
+    fullMap.filter((r) => r.role === "presenter").map((r) => r.email.toLowerCase()),
+  );
+  const previousPresenterEmails = lastPresenterEmailsByMeeting.get(meetingId) ?? new Set<string>();
+  const demotedEmails = [...previousPresenterEmails].filter(
+    (email) => stillConnectedEmails.has(email) && !newPresenterEmails.has(email),
+  );
+  lastPresenterEmailsByMeeting.set(meetingId, newPresenterEmails);
+
+  if (demotedEmails.length) {
+    await Promise.all(
+      demotedEmails.map(async (email) => {
+        try {
+          await muteParticipant(onlineMeetingId, email);
+          await setParticipantCamera(onlineMeetingId, email, false);
+          await logAudit({
+            meetingId,
+            actorEmail: SYSTEM_DEMOTION_ACTOR,
+            action: "participant.forceMuteOnDemotion",
+            after: { email },
+          });
+        } catch (err) {
+          // Never let a mocked/not-yet-real force-mute failure break the
+          // role sync itself — the role PATCH above already succeeded and
+          // is the part that actually matters once GRAPH_MODE=real.
+          console.error(`[roleManager] force mute/camera-off failed for ${email}`, err);
+        }
+      }),
+    );
+  }
+
   return fullMap;
 }
 
