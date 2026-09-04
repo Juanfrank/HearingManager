@@ -280,22 +280,32 @@ let any signed-in user fabricate attendance.
 `requireTeamsUser` only proves *identity*: the caller holds a valid token
 for this app, i.e. they're some real signed-in user in the tenant. It says
 nothing about whether they're entitled to touch the specific `:meetingId`
-in the request — or, by product decision, whether they're entitled to use
-this API/tab **at all**: **only judges and auxiliaries may call this API
-or load the tab; parties and general public are tracked (roster presence,
-attendance status, presenter eligibility) but never granted access to it,
-regardless of whether they're connected to the meeting.**
-`backend/src/auth/requireMeetingMembership.ts` is the separate check for
-that — applied after `requireTeamsUser` on every meeting-scoped router
-(`hearings`, `parties`, `judges`, `remap`, `messages`, `notes`, `grants`,
-`participants`, `session`, and `GET /state`) and in `ws.ts`'s Socket.IO
-handshake, it 403s unless `req.actorEmail` matches a provisioned
-`JudgeOrAuxiliary` row for that meeting — merely being connected (a
-`RosterEntry` for that meeting) is deliberately **not** sufficient on its
-own, since that's true of parties and general public too. Without this
-check at all, any authenticated user in the tenant could read or mutate
-any meeting just by knowing its id — including receiving live participant
-PII over the socket. Two routes are deliberately exempt, each for a
+in the request, or what they're entitled to do there. By product decision
+there are two tiers, both enforced in
+`backend/src/auth/requireMeetingMembership.ts`, applied after
+`requireTeamsUser`:
+
+- **Staff** (`requireMeetingStaff`) — a provisioned `JudgeOrAuxiliary` row
+  for that meeting. Required for every state-changing route: `hearings`,
+  `parties`, `judges`, `remap`, `messages`, `notes`, `grants`,
+  `participants`, `session`. Merely being connected (a `RosterEntry`) is
+  deliberately **not** sufficient — that's true of parties and general
+  public too, and none of them may act on anything.
+- **Viewer** (`requireMeetingViewer`) — staff, **or** merely connected to
+  the meeting (a `RosterEntry`) — parties and general public included.
+  Required for the two read-only surfaces only: `GET /state` and `ws.ts`'s
+  Socket.IO handshake. Anyone actually in the meeting can watch the same
+  live dashboard staff sees; the tab additionally hides every action
+  control for a non-staff viewer (`App.tsx`'s `isStaff`, derived by
+  matching the signed-in user's email against `snapshot.judges`) so
+  they're never offered a button that would just 403 — but that's a UX
+  nicety on top of the real boundary, which is these two middlewares.
+
+Without either check at all, any authenticated user in the tenant could
+read or mutate any meeting just by knowing its id — including receiving
+live participant PII over the socket, or (before the viewer/staff split)
+being locked out of even watching the dashboard despite being a genuine
+participant. Two routes are deliberately exempt from both, each for a
 documented reason rather than an oversight:
 - `routes/roster.ts`'s two dev-only simulation routes — they only feed
   presence/attendance tracking, not API access, and are independently
@@ -305,10 +315,9 @@ documented reason rather than an oversight:
   judge bootstraps a brand-new meeting, before their own
   `JudgeOrAuxiliary` row may exist yet if provisioning hasn't run first),
   but *changing* an already-configured meeting's
-  `organizerUserId`/`onlineMeetingId` requires the caller to already be an
-  authorized judge/auxiliary of it — otherwise an unrelated authenticated
-  user could redirect which Graph meeting future role-PATCH calls target
-  for someone else's session.
+  `organizerUserId`/`onlineMeetingId` requires the caller to already be
+  staff — otherwise an unrelated authenticated user could redirect which
+  Graph meeting future role-PATCH calls target for someone else's session.
 
 Also fails closed, not open: if `AUTH_MODE=teams-sso` and
 `MICROSOFT_APP_ID`/`MICROSOFT_APP_TENANT_ID` are unset, the server refuses

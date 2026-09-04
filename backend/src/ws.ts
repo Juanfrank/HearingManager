@@ -2,7 +2,7 @@ import type { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { buildStateSnapshot } from "./services/stateSnapshot";
 import { verifyBearerToken, isDevBypass } from "./auth/verifyTeamsToken";
-import { isMeetingMember } from "./auth/requireMeetingMembership";
+import { isMeetingParticipant } from "./auth/requireMeetingMembership";
 
 let io: SocketIOServer | null = null;
 // rosterStale is per-meeting: one meeting's bot losing its roster
@@ -24,14 +24,17 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
   // required from every client regardless of auth mode — see
   // tab/src/socket.ts for how it's resolved (Teams meeting context).
   //
-  // Also checks meeting MEMBERSHIP, not just identity — an authenticated
-  // token only proves "a real signed-in user of this app," not "one of
-  // THIS meeting's judges/auxiliaries" (this API/tab is staff-only by
-  // product decision — parties and general public are tracked, never
-  // granted access). Without this, any signed-in user could connect with
-  // an arbitrary meetingId and receive that meeting's live participant
-  // PII. See auth/requireMeetingMembership.ts for the same check applied
-  // to REST routes.
+  // Also checks meeting PARTICIPATION, not just identity — an
+  // authenticated token only proves "a real signed-in user of this app,"
+  // not "actually connected to THIS meeting." Viewer-level, not
+  // staff-only, on purpose: this socket is a read-only surface (it can
+  // only ever push state, never accept a mutation), so any connected
+  // participant — staff, party, or general public — may watch it; the tab
+  // hides every action control for a non-staff viewer, and every route
+  // that could actually change something is staff-only regardless (see
+  // auth/requireMeetingMembership.ts). Without this check at all, any
+  // signed-in user could connect with an arbitrary meetingId and receive
+  // an unrelated meeting's live participant PII.
   io.use((socket, next) => {
     const meetingId = socket.handshake.auth?.meetingId as string | undefined;
     if (!meetingId) return next(new Error("missing meetingId"));
@@ -43,7 +46,7 @@ export function initWs(httpServer: HttpServer, corsOrigin: string) {
     verifyBearerToken(token)
       .then(async (email) => {
         socket.data.actorEmail = email;
-        if (!(await isMeetingMember(meetingId, email))) {
+        if (!(await isMeetingParticipant(meetingId, email))) {
           return next(new Error("not authorized for this meeting"));
         }
         next();

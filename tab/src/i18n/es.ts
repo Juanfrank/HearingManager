@@ -80,6 +80,7 @@ export const es = {
   "app.endSessionConfirm":
     "¿Finalizar la sesión y enviar a cada juez/auxiliar un resumen del estado final de cada audiencia, incluyendo sus propias notas? Esta acción no se puede deshacer.",
   "app.endSessionButton": "Finalizar sesión y enviar resúmenes",
+  "app.viewerBanner": "👁 Modo de solo lectura — únicamente jueces y auxiliares pueden realizar acciones.",
 
   // --- backend error codes (api.ts's ApiError.code) rendered in Spanish
   // regardless of what the backend logged internally ---

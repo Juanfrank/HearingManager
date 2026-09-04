@@ -182,6 +182,7 @@ export function HearingCard({
   onNotesChange,
   spotlight,
   generalPublic,
+  isStaff,
 }: {
   hearing: HearingView;
   /** This viewer's own note for this hearing — personal, never shared (backend/src/routes/notes.ts). */
@@ -190,6 +191,12 @@ export function HearingCard({
   spotlight?: boolean;
   /** Unresolved general-public entries — source for Map-to/Add-party controls. */
   generalPublic: GeneralPublicEntry[];
+  /** See App.tsx — a non-staff viewer sees this card with no action
+   * controls, no notes (a judge-only feature anyway), and no Map-to/Add-
+   * party affordances. Every one of those routes is staff-only server-side
+   * regardless (backend/src/auth/requireMeetingMembership.ts); this just
+   * keeps the UI from offering a control that would 403. */
+  isStaff: boolean;
 }) {
   const [draft, setDraft] = useState(notes);
   const elapsed = useElapsed(hearing.state === "ACTIVE" ? hearing.activePeriodStartedAt : null);
@@ -225,43 +232,45 @@ export function HearingCard({
             <span className="email">{p.email}</span>
           </span>
           {!p.present && <span className="absent-label">{t("hearingCard.absent")}</span>}
-          {!p.present && (
+          {isStaff && !p.present && (
             <MapToControl
               hearingId={hearing.id}
               expectedPartyId={p.expectedPartyId}
               generalPublic={generalPublic}
             />
           )}
-          <span className="row-actions">
-            {/* Call only makes sense for someone not already on the call. */}
-            {!p.present && (
-              <button title={t("common.call")} onClick={() => alert(t("common.callPhase2"))}>
-                📞
+          {isStaff && (
+            <span className="row-actions">
+              {/* Call only makes sense for someone not already on the call. */}
+              {!p.present && (
+                <button title={t("common.call")} onClick={() => alert(t("common.callPhase2"))}>
+                  📞
+                </button>
+              )}
+              <button
+                title={t("common.message")}
+                onClick={async () => {
+                  const text = prompt(t("common.messagePromptTo", { name: p.email }));
+                  if (text) await api.sendMessage(p.email, text);
+                }}
+              >
+                💬
               </button>
-            )}
-            <button
-              title={t("common.message")}
-              onClick={async () => {
-                const text = prompt(t("common.messagePromptTo", { name: p.email }));
-                if (text) await api.sendMessage(p.email, text);
-              }}
-            >
-              💬
-            </button>
-            {p.present && (
-              <>
-                <button title={t("common.mute")} onClick={() => api.muteParticipant(p.email)}>
-                  🔇
-                </button>
-                <button
-                  title={t("common.cameraOff")}
-                  onClick={() => api.setParticipantCamera(p.email, false)}
-                >
-                  📷🚫
-                </button>
-              </>
-            )}
-          </span>
+              {p.present && (
+                <>
+                  <button title={t("common.mute")} onClick={() => api.muteParticipant(p.email)}>
+                    🔇
+                  </button>
+                  <button
+                    title={t("common.cameraOff")}
+                    onClick={() => api.setParticipantCamera(p.email, false)}
+                  >
+                    📷🚫
+                  </button>
+                </>
+              )}
+            </span>
+          )}
         </div>
       ))}
 
@@ -276,22 +285,26 @@ export function HearingCard({
               })}
             </span>
           </span>
-          <button title={t("hearingCard.undoRemap")} onClick={() => api.undoRemap(r.id)}>
-            ↩
-          </button>
+          {isStaff && (
+            <button title={t("hearingCard.undoRemap")} onClick={() => api.undoRemap(r.id)}>
+              ↩
+            </button>
+          )}
         </div>
       ))}
 
-      <textarea
-        placeholder={t("hearingCard.notesPlaceholder")}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          if (draft !== notes) onNotesChange(hearing.id, draft);
-        }}
-      />
+      {isStaff && (
+        <textarea
+          placeholder={t("hearingCard.notesPlaceholder")}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            if (draft !== notes) onNotesChange(hearing.id, draft);
+          }}
+        />
+      )}
 
-      {hearing.state === "ACTIVE" && (
+      {isStaff && hearing.state === "ACTIVE" && (
         <div className="action-row">
           <button className="primary-action" onClick={() => api.completeHearing(hearing.id)}>
             {t("hearingCard.markCompleted")}
@@ -304,7 +317,7 @@ export function HearingCard({
           </button>
         </div>
       )}
-      {hearing.state === "PENDING" && (
+      {isStaff && hearing.state === "PENDING" && (
         <button
           className="primary-action"
           onClick={async () => {
@@ -331,30 +344,32 @@ export function HearingCard({
               </div>
             ))}
           </div>
-          <div className="action-row">
-            <button
-              className="primary-action"
-              onClick={async () => {
-                try {
-                  await api.reactivateHearing(hearing.id);
-                } catch (err) {
-                  alert(describeApiError(err));
-                }
-              }}
-            >
-              {t("hearingCard.reactivate")}
-            </button>
-            <button
-              className="primary-action secondary-action"
-              onClick={() => api.returnToPending(hearing.id)}
-            >
-              {t("hearingCard.returnToPending")}
-            </button>
-          </div>
+          {isStaff && (
+            <div className="action-row">
+              <button
+                className="primary-action"
+                onClick={async () => {
+                  try {
+                    await api.reactivateHearing(hearing.id);
+                  } catch (err) {
+                    alert(describeApiError(err));
+                  }
+                }}
+              >
+                {t("hearingCard.reactivate")}
+              </button>
+              <button
+                className="primary-action secondary-action"
+                onClick={() => api.returnToPending(hearing.id)}
+              >
+                {t("hearingCard.returnToPending")}
+              </button>
+            </div>
+          )}
         </>
       )}
 
-      <AddPartyControl hearingId={hearing.id} generalPublic={generalPublic} />
+      {isStaff && <AddPartyControl hearingId={hearing.id} generalPublic={generalPublic} />}
     </div>
   );
 }

@@ -22,7 +22,7 @@ import { buildStateSnapshot } from "./services/stateSnapshot";
 import { initWs } from "./ws";
 import { HearingRosterBot } from "./bot";
 import { requireTeamsUser } from "./auth/verifyTeamsToken";
-import { requireMeetingMembership } from "./auth/requireMeetingMembership";
+import { requireMeetingStaff, requireMeetingViewer } from "./auth/requireMeetingMembership";
 import { startDailyImportScheduler } from "./services/dailyImportScheduler";
 
 const app = express();
@@ -87,7 +87,15 @@ app.use("/api/admin", adminRouter);
 // actually stand behind.
 app.use("/api", requireTeamsUser);
 
-app.get("/api/meetings/:meetingId/state", requireMeetingMembership, async (req, res) => {
+// Read-only, so viewer-level: any connected meeting participant (staff,
+// party, or general public), not staff-only — this is the "see the app,
+// but can't act on it" surface (docs/README.md). GET /state is what the
+// tab renders from on load, and the socket's live pushes (ws.ts) are the
+// exact same snapshot — a non-staff viewer sees an identical dashboard,
+// just with the tab hiding every action control (tab/src/App.tsx's
+// isStaff), and the backend would 403 any mutation they somehow tried
+// anyway (see below).
+app.get("/api/meetings/:meetingId/state", requireMeetingViewer, async (req, res) => {
   res.json(await buildStateSnapshot(req.params.meetingId, false));
 });
 
@@ -95,39 +103,40 @@ app.get("/api/meetings/:meetingId/state", requireMeetingMembership, async (req, 
 // conversation id, resolved by the tab from its meeting context — see
 // tab/src/teamsContext.ts) — the tenant boundary that keeps two
 // concurrent meetings' hearings/roster/judges from ever mixing at the
-// DATA level. requireMeetingMembership (auth/requireMeetingMembership.ts)
-// is the separate ACCESS-CONTROL check on top of that: requireTeamsUser
-// only proves the caller is SOME signed-in user of this app, not that
-// they're actually one of THIS meeting's judges/auxiliaries — by product
-// decision, this API/tab is judges-and-auxiliaries only, so without this
-// check, any authenticated user (including a party or general-public
-// attendee) could read/mutate any meeting just by knowing its id. See
-// prisma/schema.prisma's Meeting model and routes/meetings.ts for how a
-// Meeting row comes to exist in the first place.
+// DATA level. requireMeetingStaff (auth/requireMeetingMembership.ts) is
+// the separate ACCESS-CONTROL check on top of that: requireTeamsUser only
+// proves the caller is SOME signed-in user of this app, not that they're
+// actually one of THIS meeting's judges/auxiliaries — every router below
+// is exclusively state-changing (activate/complete a hearing, remap,
+// message, mute/camera, etc.; nothing here has a GET the tab actually
+// uses — see requireMeetingViewer above for the one read surface), so
+// staff-only, not just viewer-only. Without this check, any authenticated
+// user (including a party or general-public attendee) could mutate any
+// meeting just by knowing its id. See prisma/schema.prisma's Meeting
+// model and routes/meetings.ts for how a Meeting row comes to exist in
+// the first place.
 //
 // roster.ts is deliberately NOT gated here — its two routes only feed
 // presence/attendance tracking (who's connected, for the derived
 // ready/incomplete/no-show status and presenter eligibility), not API
 // access, and are independently protected by ALLOW_ROSTER_SIMULATION.
-// Being on the roster (a party, general public, or a judge) is no longer
-// what grants API access — only being a provisioned JudgeOrAuxiliary is.
-app.use("/api/meetings/:meetingId/hearings", requireMeetingMembership, hearingsRouter);
-app.use("/api/meetings/:meetingId/parties", requireMeetingMembership, partiesRouter);
+app.use("/api/meetings/:meetingId/hearings", requireMeetingStaff, hearingsRouter);
+app.use("/api/meetings/:meetingId/parties", requireMeetingStaff, partiesRouter);
 app.use("/api/meetings/:meetingId/roster", rosterRouter);
-app.use("/api/meetings/:meetingId/judges", requireMeetingMembership, judgesRouter);
-app.use("/api/meetings/:meetingId/remap", requireMeetingMembership, remapRouter);
-app.use("/api/meetings/:meetingId/messages", requireMeetingMembership, messagesRouter);
+app.use("/api/meetings/:meetingId/judges", requireMeetingStaff, judgesRouter);
+app.use("/api/meetings/:meetingId/remap", requireMeetingStaff, remapRouter);
+app.use("/api/meetings/:meetingId/messages", requireMeetingStaff, messagesRouter);
 // notes/grants/participants/session define their own leaf paths (e.g.
 // GET /notes, POST /grants, POST /participants/:email/mute,
 // POST /end-session) rather than each getting their own app.use prefix —
 // mounted at the bare :meetingId base alongside meetingsRouter.
-app.use("/api/meetings/:meetingId", requireMeetingMembership, notesRouter);
-app.use("/api/meetings/:meetingId", requireMeetingMembership, grantsRouter);
-app.use("/api/meetings/:meetingId", requireMeetingMembership, participantsRouter);
-app.use("/api/meetings/:meetingId", requireMeetingMembership, sessionRouter);
+app.use("/api/meetings/:meetingId", requireMeetingStaff, notesRouter);
+app.use("/api/meetings/:meetingId", requireMeetingStaff, grantsRouter);
+app.use("/api/meetings/:meetingId", requireMeetingStaff, participantsRouter);
+app.use("/api/meetings/:meetingId", requireMeetingStaff, sessionRouter);
 // meetingsRouter (just POST /register) is NOT gated here — see its own
-// narrower rule in routes/meetings.ts for why membership can't be a
-// precondition for the one route that bootstraps membership itself.
+// narrower rule in routes/meetings.ts for why staff status can't be a
+// precondition for the one route that bootstraps it.
 app.use("/api/meetings/:meetingId", meetingsRouter);
 
 // Serves the tab's production build (index.html + config.html + assets)

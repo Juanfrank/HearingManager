@@ -42,6 +42,11 @@ export interface HearingView {
 export interface JudgeView {
   id: string;
   email: string;
+  // Every known email, not just the display one above — used to determine
+  // whether the current viewer is this judge/auxiliary (App.tsx's
+  // isStaff), since myEmail (from Teams' own profile context) isn't
+  // guaranteed to be their PRIMARY listed email.
+  emails: string[];
   name: string;
   role: "JUDGE" | "PRESIDING_JUDGE" | "SECRETARY" | "OTHER_OFFICER";
   connected: boolean;

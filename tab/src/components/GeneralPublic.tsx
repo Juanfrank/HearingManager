@@ -17,12 +17,17 @@ export function GeneralPublic({
   remapped,
   hearings,
   presenterGrants,
+  isStaff,
 }: {
   entries: GeneralPublicEntry[];
   remapped: RemappedIntoHearing[];
   hearings: HearingView[];
   /** Active (non-revoked) ad-hoc mic/camera grants for this meeting. */
   presenterGrants: PresenterGrantView[];
+  /** See App.tsx — a non-staff viewer sees the grant indicator but never
+   * the grant/revoke button (backend/src/routes/grants.ts is staff-only
+   * regardless). */
+  isStaff: boolean;
 }) {
   const total = entries.length + remapped.length;
   const grantByEmail = new Map(presenterGrants.map((g) => [g.email, g]));
@@ -43,16 +48,20 @@ export function GeneralPublic({
             {grant ? (
               <div className="grant-row">
                 <span className="grant-indicator">{t("generalPublic.micGranted")}</span>
-                <button className="revoke-btn" onClick={() => api.revokeGrant(grant.id)}>
-                  {t("generalPublic.revoke")}
-                </button>
+                {isStaff && (
+                  <button className="revoke-btn" onClick={() => api.revokeGrant(grant.id)}>
+                    {t("generalPublic.revoke")}
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="grant-row">
-                <button className="grant-btn" onClick={() => api.grantPresenter(e.email)}>
-                  {t("generalPublic.grantMic")}
-                </button>
-              </div>
+              isStaff && (
+                <div className="grant-row">
+                  <button className="grant-btn" onClick={() => api.grantPresenter(e.email)}>
+                    {t("generalPublic.grantMic")}
+                  </button>
+                </div>
+              )
             )}
           </div>
         );

@@ -8,6 +8,7 @@ export function HearingsSection({
   myNotes,
   onNotesChange,
   generalPublic,
+  isStaff,
 }: {
   hearings: HearingView[];
   myNotes: Record<string, string>;
@@ -15,6 +16,9 @@ export function HearingsSection({
   /** Unresolved general-public entries — source list for a hearing card's
    * "Map to…" (on an absent party) and "+ Add party" controls. */
   generalPublic: GeneralPublicEntry[];
+  /** See App.tsx — a non-staff viewer sees every hearing card with no
+   * action controls at all. */
+  isStaff: boolean;
 }) {
   // At most one hearing can be ACTIVE at a time (backend/src/graph/
   // roleManager.ts rejects activating a second one) — pull it out of the
@@ -38,6 +42,7 @@ export function HearingsSection({
       onNotesChange={onNotesChange}
       spotlight={spotlight}
       generalPublic={generalPublic}
+      isStaff={isStaff}
     />
   );
 

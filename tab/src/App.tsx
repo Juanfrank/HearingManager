@@ -73,6 +73,19 @@ export default function App() {
     return <div className="loading">{t("app.connecting")}</div>;
   }
 
+  // The real access boundary is server-side (backend/src/auth/
+  // requireMeetingMembership.ts's requireMeetingStaff — every mutating
+  // route 403s a non-staff caller regardless of what the UI shows). This
+  // is purely the UX side of that: a party or general-public viewer sees
+  // the exact same live dashboard, just with every action control hidden,
+  // so they aren't offered a button that would just fail. Matched against
+  // ALL of a judge's known emails, not just their primary one, since
+  // myEmail (Teams' own profile context) isn't guaranteed to be that.
+  const myEmailNormalized = myEmail.trim().toLowerCase();
+  const isStaff = snapshot.judges.some((j) =>
+    j.emails.some((e) => e.trim().toLowerCase() === myEmailNormalized),
+  );
+
   return (
     <div className="app">
       {snapshot.rosterStale && <div className="stale-banner">{t("app.staleBanner")}</div>}
@@ -83,20 +96,23 @@ export default function App() {
           })}
         </div>
       )}
-      <JudgesPanel judges={snapshot.judges} myEmail={myEmail} />
+      {!isStaff && <div className="viewer-banner">{t("app.viewerBanner")}</div>}
+      <JudgesPanel judges={snapshot.judges} myEmail={myEmail} isStaff={isStaff} />
       <HearingsSection
         hearings={snapshot.hearings}
         myNotes={myNotes}
         onNotesChange={onNotesChange}
         generalPublic={snapshot.generalPublic}
+        isStaff={isStaff}
       />
       <GeneralPublic
         entries={snapshot.generalPublic}
         remapped={snapshot.remappedIntoHearing}
         hearings={snapshot.hearings}
         presenterGrants={snapshot.presenterGrants}
+        isStaff={isStaff}
       />
-      {!snapshot.meetingEndedAt && (
+      {isStaff && !snapshot.meetingEndedAt && (
         <button
           className="end-session-btn"
           onClick={async () => {

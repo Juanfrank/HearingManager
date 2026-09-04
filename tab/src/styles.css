@@ -198,6 +198,17 @@ textarea {
   font-weight: 500;
 }
 
+.viewer-banner {
+  background: #f6f8fa;
+  border: 1px solid var(--border);
+  color: #57606a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .end-session-btn {
   width: 100%;
   padding: 8px;
