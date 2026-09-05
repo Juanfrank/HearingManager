@@ -7,3 +7,4 @@ backend/prisma/dev.db
 manifest/*.zip
 tab/dist/
 backend/public/
+.claude/depgraph.json
