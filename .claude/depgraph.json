@@ -1,0 +1,2414 @@
+{
+ "files": [
+  {
+   "path": "tab/vite.config.ts",
+   "hash": "09e5a06010df5540a7424d5f2a86c182da558ad85ee9c8494f7ee926e682aa86",
+   "imports": [
+    "@vitejs/plugin-react",
+    "path",
+    "vite"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "@vitejs/plugin-react",
+     "resolved": null
+    },
+    {
+     "module": "path",
+     "resolved": null
+    },
+    {
+     "module": "vite",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/App.tsx",
+   "hash": "2fae8b9c521d424b3bea3aefaae701e713ad00ae515ee22e08869185b3e905b5",
+   "imports": [
+    "./api",
+    "./components/GeneralPublic",
+    "./components/HearingsSection",
+    "./components/JudgesPanel",
+    "./i18n",
+    "./socket",
+    "./teamsContext",
+    "./types",
+    "react"
+   ],
+   "defines": [
+    {
+     "name": "App",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "App"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./api",
+     "resolved": null
+    },
+    {
+     "module": "./components/GeneralPublic",
+     "resolved": null
+    },
+    {
+     "module": "./components/HearingsSection",
+     "resolved": null
+    },
+    {
+     "module": "./components/JudgesPanel",
+     "resolved": null
+    },
+    {
+     "module": "./i18n",
+     "resolved": null
+    },
+    {
+     "module": "./socket",
+     "resolved": null
+    },
+    {
+     "module": "./teamsContext",
+     "resolved": null
+    },
+    {
+     "module": "./types",
+     "resolved": null
+    },
+    {
+     "module": "react",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/api.ts",
+   "hash": "132c72efdd445304c4b0360991c7955b060d621f926993640633eeac00b8838e",
+   "imports": [
+    "./teamsContext"
+   ],
+   "defines": [
+    {
+     "name": "ApiError",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "api",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "ApiError",
+    "api"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./teamsContext",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/vite-env.d.ts",
+   "hash": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "tab/src/auth-end.ts",
+   "hash": "4235bb64c1ddd3a3cbb0a19a0eaf0eabe8ca27925626c302826cbaa9801555d9",
+   "imports": [
+    "@microsoft/teams-js"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "@microsoft/teams-js",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/auth-start.ts",
+   "hash": "5c7a56714607ad98fa9f6362c470357d33e9bf108d82c6d2b1d19cd2e99a4ec3",
+   "imports": [
+    "@microsoft/teams-js"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "@microsoft/teams-js",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/main.tsx",
+   "hash": "41431cb94a112ca05f90ca6037229d09d4bb8ecc1c27ae3bb3740ace8f01d2a6",
+   "imports": [
+    "./App",
+    "./styles.css",
+    "react",
+    "react-dom/client"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./App",
+     "resolved": null
+    },
+    {
+     "module": "./styles.css",
+     "resolved": null
+    },
+    {
+     "module": "react",
+     "resolved": null
+    },
+    {
+     "module": "react-dom/client",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/config.tsx",
+   "hash": "74001a8d4899ed54c639c799845687dd7f6ddb2cf509325ec278357a71ff20c0",
+   "imports": [
+    "./styles.css",
+    "@microsoft/teams-js",
+    "react",
+    "react-dom/client"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./styles.css",
+     "resolved": null
+    },
+    {
+     "module": "@microsoft/teams-js",
+     "resolved": null
+    },
+    {
+     "module": "react",
+     "resolved": null
+    },
+    {
+     "module": "react-dom/client",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/teamsContext.ts",
+   "hash": "dcff14242358c1c1df7d142442ca83d97d64fe4dafe5db35ce10dffb36a092d4",
+   "imports": [
+    "@microsoft/teams-js"
+   ],
+   "defines": [
+    {
+     "name": "getAuthToken",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "getCurrentUserEmail",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "getMeetingId",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "getAuthToken",
+    "getCurrentUserEmail",
+    "getMeetingId"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "@microsoft/teams-js",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/socket.ts",
+   "hash": "e96a1628309fee0402991460590ac661ab24533c8df057ba8f51936ba012ee30",
+   "imports": [
+    "./teamsContext",
+    "./types",
+    "socket.io-client"
+   ],
+   "defines": [
+    {
+     "name": "subscribeToState",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "subscribeToState"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./teamsContext",
+     "resolved": null
+    },
+    {
+     "module": "./types",
+     "resolved": null
+    },
+    {
+     "module": "socket.io-client",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/types.ts",
+   "hash": "544b8f6366b20b13a06b28344da3fd19aa86f9d0e52253c41d4c3f4888a72197",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "tab/src/components/JudgesPanel.tsx",
+   "hash": "0c9e040798648c05706e70f3830e26d22a383999c0d474c4a6fbb00462faf460",
+   "imports": [
+    "../api",
+    "../i18n",
+    "../types",
+    "./Collapsible"
+   ],
+   "defines": [
+    {
+     "name": "JudgesPanel",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "JudgesPanel"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../api",
+     "resolved": null
+    },
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../types",
+     "resolved": null
+    },
+    {
+     "module": "./Collapsible",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/components/HearingStatusGrid.tsx",
+   "hash": "40690539c99869ed6d04885ffe15926c595ca78f90c087cad29aa9dbe7e2f86c",
+   "imports": [
+    "../i18n",
+    "../types"
+   ],
+   "defines": [
+    {
+     "name": "HearingStatusGrid",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "HearingStatusGrid"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../types",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/components/HearingsSection.tsx",
+   "hash": "e8aa66a3ebe1382163605fad0743ead4a8518265979e4a02c07ed5d273b1f281",
+   "imports": [
+    "../i18n",
+    "../types",
+    "./Collapsible",
+    "./HearingCard",
+    "./HearingStatusGrid"
+   ],
+   "defines": [
+    {
+     "name": "HearingsSection",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "HearingsSection"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../types",
+     "resolved": null
+    },
+    {
+     "module": "./Collapsible",
+     "resolved": null
+    },
+    {
+     "module": "./HearingCard",
+     "resolved": null
+    },
+    {
+     "module": "./HearingStatusGrid",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/components/HearingCard.tsx",
+   "hash": "a2fe3d013b10b1f7b04139cc4412085b1b4e5be685fd6b150cc88f2849493636",
+   "imports": [
+    "../api",
+    "../i18n",
+    "../types",
+    "react"
+   ],
+   "defines": [
+    {
+     "name": "HearingCard",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "HearingCard"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../api",
+     "resolved": null
+    },
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../types",
+     "resolved": null
+    },
+    {
+     "module": "react",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/components/Collapsible.tsx",
+   "hash": "d3c3e3ac6f587f79e927afb8bdf38cb07c95b9d9265dbeecd5074d8ca7284d01",
+   "imports": [
+    "react"
+   ],
+   "defines": [
+    {
+     "name": "Collapsible",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "Collapsible"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "react",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/components/GeneralPublic.tsx",
+   "hash": "df87a7d5859217dd5c0c43996fd67f8fd0b052eacbbf0d546bf8e6ed932926fe",
+   "imports": [
+    "../api",
+    "../i18n",
+    "../types",
+    "./Collapsible"
+   ],
+   "defines": [
+    {
+     "name": "GeneralPublic",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "GeneralPublic"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../api",
+     "resolved": null
+    },
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../types",
+     "resolved": null
+    },
+    {
+     "module": "./Collapsible",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "tab/src/i18n/es.ts",
+   "hash": "045b79a44782022b246b3a22b44439e8e9db2b3179002e235a02f339646e7355",
+   "imports": [],
+   "defines": [
+    {
+     "name": "es",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "es"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "tab/src/i18n/index.ts",
+   "hash": "478270300351b3c5961b687fdd95623c3250f2cf9df6944fb703e26c745ffd4f",
+   "imports": [
+    "./es"
+   ],
+   "defines": [
+    {
+     "name": "DEFAULT_LOCALE",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "getLocale",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "hasKey",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "t",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "DEFAULT_LOCALE",
+    "getLocale",
+    "hasKey",
+    "t"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./es",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/index.ts",
+   "hash": "9263ec11368ed51ca5ca051dff22b784e53f8e8f81b7182dacca7b1907d2b5fe",
+   "imports": [
+    "./auth/requireMeetingMembership",
+    "./auth/verifyTeamsToken",
+    "./bot",
+    "./routes/admin",
+    "./routes/grants",
+    "./routes/hearings",
+    "./routes/judges",
+    "./routes/meetings",
+    "./routes/messages",
+    "./routes/notes",
+    "./routes/participants",
+    "./routes/parties",
+    "./routes/provision",
+    "./routes/remap",
+    "./routes/roster",
+    "./routes/session",
+    "./services/dailyImportScheduler",
+    "./services/stateSnapshot",
+    "./ws",
+    "botbuilder",
+    "cors",
+    "dotenv/config",
+    "express",
+    "fs",
+    "http",
+    "path"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./auth/requireMeetingMembership",
+     "resolved": null
+    },
+    {
+     "module": "./auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "./bot",
+     "resolved": null
+    },
+    {
+     "module": "./routes/admin",
+     "resolved": null
+    },
+    {
+     "module": "./routes/grants",
+     "resolved": null
+    },
+    {
+     "module": "./routes/hearings",
+     "resolved": null
+    },
+    {
+     "module": "./routes/judges",
+     "resolved": null
+    },
+    {
+     "module": "./routes/meetings",
+     "resolved": null
+    },
+    {
+     "module": "./routes/messages",
+     "resolved": null
+    },
+    {
+     "module": "./routes/notes",
+     "resolved": null
+    },
+    {
+     "module": "./routes/participants",
+     "resolved": null
+    },
+    {
+     "module": "./routes/parties",
+     "resolved": null
+    },
+    {
+     "module": "./routes/provision",
+     "resolved": null
+    },
+    {
+     "module": "./routes/remap",
+     "resolved": null
+    },
+    {
+     "module": "./routes/roster",
+     "resolved": null
+    },
+    {
+     "module": "./routes/session",
+     "resolved": null
+    },
+    {
+     "module": "./services/dailyImportScheduler",
+     "resolved": null
+    },
+    {
+     "module": "./services/stateSnapshot",
+     "resolved": null
+    },
+    {
+     "module": "./ws",
+     "resolved": null
+    },
+    {
+     "module": "botbuilder",
+     "resolved": null
+    },
+    {
+     "module": "cors",
+     "resolved": null
+    },
+    {
+     "module": "dotenv/config",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    },
+    {
+     "module": "fs",
+     "resolved": null
+    },
+    {
+     "module": "http",
+     "resolved": null
+    },
+    {
+     "module": "path",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/ws.ts",
+   "hash": "07d3ed0e542ad568a40150bb71437bdb91e982c693945c3d518d8fe71302569a",
+   "imports": [
+    "./auth/requireMeetingMembership",
+    "./auth/verifyTeamsToken",
+    "./services/stateSnapshot",
+    "http",
+    "socket.io"
+   ],
+   "defines": [
+    {
+     "name": "broadcastState",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "initWs",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "setRosterStale",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "broadcastState",
+    "initWs",
+    "setRosterStale"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./auth/requireMeetingMembership",
+     "resolved": null
+    },
+    {
+     "module": "./auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "./services/stateSnapshot",
+     "resolved": null
+    },
+    {
+     "module": "http",
+     "resolved": null
+    },
+    {
+     "module": "socket.io",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/db.ts",
+   "hash": "74a75bdf47b4d73f201e2688123a3a6dbd03fee1717419ab60c7c097251a4ad1",
+   "imports": [
+    "@prisma/client"
+   ],
+   "defines": [
+    {
+     "name": "prisma",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "prisma"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "@prisma/client",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/util/params.ts",
+   "hash": "d24841a921ae97f7aecc3a8c325ada8af83ebb451d7505b50bfe3d249d92d343",
+   "imports": [
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "meetingIdParam",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "meetingIdParam"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/util/identity.ts",
+   "hash": "59d7b735c880a48485d73c62d6812aa37a32aa53a263b176602f53073fc62424",
+   "imports": [],
+   "defines": [
+    {
+     "name": "externalUidOrSynthetic",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "externalUidOrSynthetic"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/util/formatDuration.ts",
+   "hash": "1183a42e72bf5827a3a8e6ea783e7ce64b6fc8120389df84c46a4b964e50ebf8",
+   "imports": [],
+   "defines": [
+    {
+     "name": "formatDuration",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "formatDuration"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/graph/roleManager.ts",
+   "hash": "f00547eb693a540eca775733d747e3e225d0afb72935b636987453875dd3091a",
+   "imports": [
+    "../db",
+    "../services/auditLog",
+    "../services/presenterRules",
+    "../services/statusDerivation",
+    "./client"
+   ],
+   "defines": [
+    {
+     "name": "AlreadyActiveHearingError",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "activateHearing",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "completeHearing",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "reactivateHearing",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "returnHearingToPending",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "syncMeetingRoles",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "AlreadyActiveHearingError",
+    "activateHearing",
+    "completeHearing",
+    "reactivateHearing",
+    "returnHearingToPending",
+    "syncMeetingRoles"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../services/presenterRules",
+     "resolved": null
+    },
+    {
+     "module": "../services/statusDerivation",
+     "resolved": null
+    },
+    {
+     "module": "./client",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/graph/client.ts",
+   "hash": "7726349a9d445399335b11169e33afa8d9f302fda62926df2848875a4ebd93b8",
+   "imports": [],
+   "defines": [
+    {
+     "name": "GraphThrottleError",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "muteParticipant",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "patchMeetingRoles",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "sendChatMessage",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "setParticipantCamera",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "GraphThrottleError",
+    "muteParticipant",
+    "patchMeetingRoles",
+    "sendChatMessage",
+    "setParticipantCamera"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/auth/requireProvisioningKey.ts",
+   "hash": "0fb622d04d87290e3a31d4914fc72e0a8e1fb316f088fff93844a82f41041d2b",
+   "imports": [
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "requireProvisioningKey",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "requireProvisioningKey"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/auth/requireMeetingMembership.ts",
+   "hash": "5f97bc099cebc384bff171adabd008793d22f5976ae44a1bd40aa766ea5086c2",
+   "imports": [
+    "../db",
+    "../util/params",
+    "./verifyTeamsToken",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "isMeetingParticipant",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "isMeetingStaff",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "requireMeetingStaff",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "requireMeetingViewer",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "isMeetingParticipant",
+    "isMeetingStaff",
+    "requireMeetingStaff",
+    "requireMeetingViewer"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "./verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/auth/verifyTeamsToken.ts",
+   "hash": "5d2a6debf1d8bb510b3e30d66d1500d3c19fb307d68f9b019d5bff7803a341a0",
+   "imports": [
+    "express",
+    "jsonwebtoken",
+    "jwks-rsa"
+   ],
+   "defines": [
+    {
+     "name": "isDevBypass",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "requireTeamsUser",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "verifyBearerToken",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "isDevBypass",
+    "requireTeamsUser",
+    "verifyBearerToken"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "express",
+     "resolved": null
+    },
+    {
+     "module": "jsonwebtoken",
+     "resolved": null
+    },
+    {
+     "module": "jwks-rsa",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/presenterRules.test.ts",
+   "hash": "6ed7e9abb3e34a5021750abf0f5373ab998ce3e8bf139369239ca28f0bc10c7b",
+   "imports": [
+    "./presenterRules",
+    "vitest"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./presenterRules",
+     "resolved": null
+    },
+    {
+     "module": "vitest",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/stateSnapshot.ts",
+   "hash": "0df8e3559e3eddd10ffa3434dbd5b685d70058a5b56d324671d799ecaa35163c",
+   "imports": [
+    "../db",
+    "./statusDerivation"
+   ],
+   "defines": [
+    {
+     "name": "buildStateSnapshot",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "buildStateSnapshot"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "./statusDerivation",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/sessionSummary.ts",
+   "hash": "d456d9af400a3a927f29bbc70efd98d63964299f84976055f308e4722e48abab",
+   "imports": [
+    "../db",
+    "../graph/client",
+    "../i18n",
+    "../util/formatDuration",
+    "./auditLog",
+    "./statusDerivation"
+   ],
+   "defines": [
+    {
+     "name": "sendSessionSummaries",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "sendSessionSummaries"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../graph/client",
+     "resolved": null
+    },
+    {
+     "module": "../i18n",
+     "resolved": null
+    },
+    {
+     "module": "../util/formatDuration",
+     "resolved": null
+    },
+    {
+     "module": "./auditLog",
+     "resolved": null
+    },
+    {
+     "module": "./statusDerivation",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/cmsImport.test.ts",
+   "hash": "9fb1d179edc50c84f81663ee802a1085ff3e38d8fac32bad16305f963b7b6a4d",
+   "imports": [
+    "./cmsClient",
+    "./cmsImport",
+    "vitest"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./cmsClient",
+     "resolved": null
+    },
+    {
+     "module": "./cmsImport",
+     "resolved": null
+    },
+    {
+     "module": "vitest",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/auditLog.ts",
+   "hash": "5e53c54c903810a9c1a3db0895afcbda063c803c595f5a01a55b29355d40a32e",
+   "imports": [
+    "../db"
+   ],
+   "defines": [
+    {
+     "name": "logAudit",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "parseAuditJson",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "logAudit",
+    "parseAuditJson"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/cmsClient.ts",
+   "hash": "b2d7fd0c3205ba07e4ab8835051c330699ee579be3601b3a95666eb3d9fd4b75",
+   "imports": [],
+   "defines": [
+    {
+     "name": "fetchHearingsForDate",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "fetchHearingsForDate"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/services/presenterRules.ts",
+   "hash": "26369968734082bf7a018d4d9c9afcebb507731def935881595c148ce305d9fb",
+   "imports": [],
+   "defines": [
+    {
+     "name": "computePresenterEmails",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "computePresenterEmails"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/services/statusDerivation.test.ts",
+   "hash": "2cb003fb28654eb36f57a35f4398cbc409becda8dd96cbc0c3feb7fa0922120a",
+   "imports": [
+    "./statusDerivation",
+    "vitest"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./statusDerivation",
+     "resolved": null
+    },
+    {
+     "module": "vitest",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/dailyImportScheduler.ts",
+   "hash": "fa9146d28c0edc3a7aa86e956cace07205477ff83ba579b21c4d295c0dcb67cf",
+   "imports": [
+    "./cmsClient",
+    "./cmsImport",
+    "./importHearingData"
+   ],
+   "defines": [
+    {
+     "name": "runDailyImportNow",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "startDailyImportScheduler",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "runDailyImportNow",
+    "startDailyImportScheduler"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./cmsClient",
+     "resolved": null
+    },
+    {
+     "module": "./cmsImport",
+     "resolved": null
+    },
+    {
+     "module": "./importHearingData",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/importHearingData.ts",
+   "hash": "ad22c2ac66c39ef678633c5540ca7a522a81b9803ba66a8ee7ed74bd838a5904",
+   "imports": [
+    "../db",
+    "../util/identity",
+    "../ws",
+    "./auditLog"
+   ],
+   "defines": [
+    {
+     "name": "importHearingData",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "importHearingData"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../util/identity",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "./auditLog",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/cmsImport.ts",
+   "hash": "68d77bfb16cf67cde616453aad7a770f868ad7b11ea8dad5d2084752b58078e7",
+   "imports": [
+    "./cmsClient",
+    "./importHearingData"
+   ],
+   "defines": [
+    {
+     "name": "CMS_ROLE_MAPPING",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "parseCmsRows",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "CMS_ROLE_MAPPING",
+    "parseCmsRows"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./cmsClient",
+     "resolved": null
+    },
+    {
+     "module": "./importHearingData",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/services/statusDerivation.ts",
+   "hash": "a624205e8d332b2d0dc5eec8ad15314ae98d5747c889f30de223534d7a10ce60",
+   "imports": [],
+   "defines": [
+    {
+     "name": "connectedEmailsForHearing",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "deriveHearingAttendance",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "generalPublicEntries",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "connectedEmailsForHearing",
+    "deriveHearingAttendance",
+    "generalPublicEntries"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/bot/index.ts",
+   "hash": "7b5dc0333db17f11b131675906e19f281ec85273b6f71cc15b1f4477456a1334",
+   "imports": [
+    "../routes/roster",
+    "../ws",
+    "botbuilder"
+   ],
+   "defines": [
+    {
+     "name": "HearingRosterBot",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "HearingRosterBot"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../routes/roster",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "botbuilder",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/i18n/es.ts",
+   "hash": "6bfe9981b996a94f257e1d71cb597c1edc686eb591dbc338a359a7ed20e777de",
+   "imports": [],
+   "defines": [
+    {
+     "name": "es",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "es"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/src/i18n/index.ts",
+   "hash": "d9210ea6ef13a683aafd9cd2a54aaf04c250e1564f7eb37a56b8134a52e98679",
+   "imports": [
+    "./es"
+   ],
+   "defines": [
+    {
+     "name": "DEFAULT_LOCALE",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "t",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "DEFAULT_LOCALE",
+    "t"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "./es",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/notes.ts",
+   "hash": "e5feb33e19f6e4608f9f052c861022f647fbed01a951a37e3ce39a98bcbba001",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../services/auditLog",
+    "../util/params",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "notesRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "notesRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/hearings.ts",
+   "hash": "cdafe29dfa54deefaf78f19e5a68d9aef03f62fc1255cbddf1ee71ae4d8844a2",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../graph/roleManager",
+    "../services/auditLog",
+    "../services/stateSnapshot",
+    "../util/identity",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "hearingsRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "hearingsRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../graph/roleManager",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../services/stateSnapshot",
+     "resolved": null
+    },
+    {
+     "module": "../util/identity",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/admin.ts",
+   "hash": "bd5514ebba9f528e6358d56c31def2737a26cf5a90fc773580f961dd92c806b2",
+   "imports": [
+    "../auth/requireProvisioningKey",
+    "../services/dailyImportScheduler",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "adminRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "adminRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/requireProvisioningKey",
+     "resolved": null
+    },
+    {
+     "module": "../services/dailyImportScheduler",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/session.ts",
+   "hash": "7a6734c5822f2b0a0c6a66f801eead7a28679da6ba97f8cf5f289fbf1e43ef1e",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../services/sessionSummary",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "sessionRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "sessionRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../services/sessionSummary",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/judges.ts",
+   "hash": "ba54d9f0a924224bcf3cd4da92b933e0fcedb80167adba5417395f4d950e2f6f",
+   "imports": [
+    "../db",
+    "../util/identity",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "judgesRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "judgesRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../util/identity",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/grants.ts",
+   "hash": "12b2c72aa44cb3044d355711b83546a244811df48fec6eeee1854c2e6acb3bea",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../graph/roleManager",
+    "../services/auditLog",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "grantsRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "grantsRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../graph/roleManager",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/remap.ts",
+   "hash": "9d03adb65b36f0564fa5f9eb6fe2d314fdfd829bcb489f51d1703d2b3e4348a6",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../services/auditLog",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "remapRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "remapRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/provision.ts",
+   "hash": "e581263b32eb641c267d0f9287362c54318ecc4fba01ad7ddc2e6487c5b592c6",
+   "imports": [
+    "../auth/requireProvisioningKey",
+    "../services/importHearingData",
+    "../util/params",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "provisionRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "provisionRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/requireProvisioningKey",
+     "resolved": null
+    },
+    {
+     "module": "../services/importHearingData",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/roster.ts",
+   "hash": "bbab9d0c32aba8e861dabadbd7a31f8fa44d5c1bce7608f319936dbd36a37650",
+   "imports": [
+    "../db",
+    "../graph/roleManager",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "applyRosterEvent",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "rosterRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "applyRosterEvent",
+    "rosterRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../graph/roleManager",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/messages.ts",
+   "hash": "48a97ecee73fd15c50c47dfe60238b67baf3383209808c2a5aa78d4e8f471658",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../graph/client",
+    "../services/auditLog",
+    "../util/params",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "messagesRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "messagesRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../graph/client",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/meetings.ts",
+   "hash": "7a179be5b6cae87987cbc2a839ee4bd1367724f7e74d8b08083e1ce258ff6e4a",
+   "imports": [
+    "../auth/requireMeetingMembership",
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../util/params",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "meetingsRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "meetingsRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/requireMeetingMembership",
+     "resolved": null
+    },
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/parties.ts",
+   "hash": "3e245c1cad438ee25f3bfffc8dc56e224f30f0c7935872da7ab38a9b7d525e64",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../db",
+    "../services/auditLog",
+    "../util/identity",
+    "../util/params",
+    "../ws",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "partiesRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "partiesRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../db",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/identity",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "../ws",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/src/routes/participants.ts",
+   "hash": "0279f159851ddcd987853358b90f020b5943ecd9a351c9925bf1d6a8f3bf91dd",
+   "imports": [
+    "../auth/verifyTeamsToken",
+    "../graph/client",
+    "../services/auditLog",
+    "../util/params",
+    "express"
+   ],
+   "defines": [
+    {
+     "name": "participantsRouter",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "participantsRouter"
+   ],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "../auth/verifyTeamsToken",
+     "resolved": null
+    },
+    {
+     "module": "../graph/client",
+     "resolved": null
+    },
+    {
+     "module": "../services/auditLog",
+     "resolved": null
+    },
+    {
+     "module": "../util/params",
+     "resolved": null
+    },
+    {
+     "module": "express",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "backend/public/assets/childCommunication-D7ldZLr0.js",
+   "hash": "2aa3500e21178a995d861d014ff8907524b182efdcd0a5e61d07d89d8a19c9c1",
+   "imports": [],
+   "defines": [
+    {
+     "name": "A",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "Cn",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "G",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "N",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "O",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "S",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "ai",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "bi",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "c",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "ci",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "hi",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "j",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "pi",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "vi",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "w",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "wi",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "yi",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "A",
+    "Cn",
+    "G",
+    "N",
+    "O",
+    "S",
+    "ai",
+    "bi",
+    "c",
+    "ci",
+    "hi",
+    "j",
+    "pi",
+    "vi",
+    "w",
+    "wi",
+    "yi"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/main-CWxOAVMY.js",
+   "hash": "e03626aa358a1ceee89915bef88df1a6c7fbc7331ea5144d94fbff7d19edc516",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/authStart-D541ycXs.js",
+   "hash": "74886c1dfbf577d56bec6da8f64737c103115037871a76fa170067cac42ddff1",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/authentication-Br7QcB6k.js",
+   "hash": "ea16588d6bc01acdb270a61ab818736761496d9e68797d69798c0984903b87a5",
+   "imports": [],
+   "defines": [
+    {
+     "name": "$",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "P",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "S",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "W",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "$",
+    "P",
+    "S",
+    "W"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/styles-DeMk_18e.js",
+   "hash": "f21716df2736b7eaeb390c76dc0e2411c8bfa822c2b40ddaf6b34faf9681446e",
+   "imports": [],
+   "defines": [
+    {
+     "name": "$u",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "Io",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "Ld",
+     "line": null,
+     "type": "export"
+    },
+    {
+     "name": "Td",
+     "line": null,
+     "type": "export"
+    }
+   ],
+   "exports": [
+    "$u",
+    "Io",
+    "Ld",
+    "Td"
+   ],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/authEnd-_vBNC4Ly.js",
+   "hash": "97de1662f6feea689f6fbfd4493f03d15c03834c0fa3cceccb88c64c9c679932",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/public/assets/config-C8cpqOtA.js",
+   "hash": "c63a23151a581e21e2967c2ba6bb65fa87b59cc3579ecd6ff8914a48bc2b4326",
+   "imports": [],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": []
+  },
+  {
+   "path": "backend/scripts/copy-tab-dist.js",
+   "hash": "acf79bf862fa1fbd76738a5987c800003323431cb35f4e076fe850f83ead7a0d",
+   "imports": [
+    "fs",
+    "path"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "fs",
+     "resolved": null
+    },
+    {
+     "module": "path",
+     "resolved": null
+    }
+   ]
+  },
+  {
+   "path": "scripts/generate-placeholder-icons.js",
+   "hash": "964bd73e2118700b86d58a22ad54ab8fd5542fe0c0b33eafe033efb99f950d2c",
+   "imports": [
+    "fs",
+    "path",
+    "zlib"
+   ],
+   "defines": [],
+   "exports": [],
+   "references": [],
+   "import_edges": [
+    {
+     "module": "fs",
+     "resolved": null
+    },
+    {
+     "module": "path",
+     "resolved": null
+    },
+    {
+     "module": "zlib",
+     "resolved": null
+    }
+   ]
+  }
+ ],
+ "file_count": 67
+}
